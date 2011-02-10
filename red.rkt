@@ -20,42 +20,44 @@
                             rs)
                        c)))
 
-          (define t1 (build-test-dfa null))
-          (define t2 (build-test-dfa `(#\a)))
-          (define t3 (build-test-dfa `(#\a #\b)))
-          (define t4 (build-test-dfa `((repetition 0 +inf.0 #\a)
-                                       (repetition 0 +inf.0 (concatenation #\a #\b)))))
-          (define t5 (build-test-dfa `((concatenation (repetition 0 +inf.0 (union #\0 #\1)) #\1))))
-          (define t6 (build-test-dfa `((repetition 0 +inf.0 (repetition 0 +inf.0 #\a))
-                                       (repetition 0 +inf.0 (concatenation #\b (repetition 1 +inf.0 #\b))))))
-          (define t7 (build-test-dfa `((concatenation (repetition 0 +inf.0 #\a) (repetition 0 +inf.0 #\b)
-                                                      (repetition 0 +inf.0 #\c) (repetition 0 +inf.0 #\d)
-                                                      (repetition 0 +inf.0 #\e)))))
-          (define t8
-            (build-test-dfa `((concatenation (repetition 0 +inf.0 (union #\a #\b)) #\a (union #\a #\b)
-                                             (union #\a #\b) (union #\a #\b) (union #\a #\b)))))
-          (define t9 (build-test-dfa `((concatenation "/*"
-                                                      (complement (concatenation (intersection) "*/" (intersection)))
-                                                      "*/"))))
-          (define t11 (build-test-dfa `((complement "1"))))
-          (define t12 (build-test-dfa `((concatenation (intersection (concatenation (repetition 0 +inf.0 "a") "b")
-                                                                     (concatenation "a" (repetition 0 +inf.0 "b")))
-                                                       "ab"))))
-          (define x (build-test-dfa `((union " " "\n" ",")
-                                      (concatenation (repetition 0 1 "-") (repetition 1 +inf.0 (char-range "0" "9")))
-                                      (concatenation "-" (repetition 1 +inf.0 "-"))
-                                      "["
-                                      "]")))
-          (define y (build-test-dfa
-                     `((repetition 1 +inf.0
-                                   (union (concatenation "|" (repetition 0 +inf.0 (char-complement "|")) "|")
-                                          (concatenation "|" (repetition 0 +inf.0 (char-complement "|"))))))))
-          (define t13 (build-test-dfa `((intersection (concatenation (intersection) "111" (intersection))
-                                                      (complement (union (concatenation (intersection) "01")
-                                                                         (repetition 1 +inf.0 "1")))))))
-          (define t14 (build-test-dfa `((complement "1"))))
 
+        ;; Test DFA's From deriv.rkt, making sure we can build everything
+        (define t1 (build-test-dfa null))
+        (define t2 (build-test-dfa `(#\a)))
+        (define t3 (build-test-dfa `(#\a #\b)))
+        (define t4 (build-test-dfa `((repetition 0 +inf.0 #\a)
+                                     (repetition 0 +inf.0 (concatenation #\a #\b)))))
+        (define t5 (build-test-dfa `((concatenation (repetition 0 +inf.0 (union #\0 #\1)) #\1))))
+        (define t6 (build-test-dfa `((repetition 0 +inf.0 (repetition 0 +inf.0 #\a))
+                                     (repetition 0 +inf.0 (concatenation #\b (repetition 1 +inf.0 #\b))))))
+        (define t7 (build-test-dfa `((concatenation (repetition 0 +inf.0 #\a) (repetition 0 +inf.0 #\b)
+                                                    (repetition 0 +inf.0 #\c) (repetition 0 +inf.0 #\d)
+                                                    (repetition 0 +inf.0 #\e)))))
+        (define t8
+          (build-test-dfa `((concatenation (repetition 0 +inf.0 (union #\a #\b)) #\a (union #\a #\b)
+                                           (union #\a #\b) (union #\a #\b) (union #\a #\b)))))
+        (define t9 (build-test-dfa `((concatenation "/*"
+                                                    (complement (concatenation (intersection) "*/" (intersection)))
+                                                    "*/"))))
+        (define t11 (build-test-dfa `((complement "1"))))
+        (define t12 (build-test-dfa `((concatenation (intersection (concatenation (repetition 0 +inf.0 "a") "b")
+                                                                   (concatenation "a" (repetition 0 +inf.0 "b")))
+                                                     "ab"))))
+        (define x (build-test-dfa `((union " " "\n" ",")
+                                    (concatenation (repetition 0 1 "-") (repetition 1 +inf.0 (char-range "0" "9")))
+                                    (concatenation "-" (repetition 1 +inf.0 "-"))
+                                    "["
+                                    "]")))
+        (define y (build-test-dfa
+                   `((repetition 1 +inf.0
+                                 (union (concatenation "|" (repetition 0 +inf.0 (char-complement "|")) "|")
+                                        (concatenation "|" (repetition 0 +inf.0 (char-complement "|"))))))))
+        (define t13 (build-test-dfa `((intersection (concatenation (intersection) "111" (intersection))
+                                                    (complement (union (concatenation (intersection) "01")
+                                                                       (repetition 1 +inf.0 "1")))))))
+        (define t14 (build-test-dfa `((complement "1"))))
 
+          ;; Some tests from re.rkt
   (test-block ((c (make-cache))
                (a (char->integer #\a))
                (b (char->integer #\b))
