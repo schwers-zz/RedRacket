@@ -27,7 +27,7 @@
   ;;  final-states/actions is (list-of (cons-int syntax-object))
   ;;  transitions is (list-of (cons int (list-of (cons char-set int))))
 
-  ;;  : dfa -> syntax
+  ;;  : dfa -> syntax-object
   (define (dfa-expand in)
     (if (not (dfa? in)) (error 'dfa-expand "improper input")
         (let* ([id (lambda (x) x)]
@@ -38,17 +38,21 @@
                [finals (dfa-final-states/actions in)]
                ;; : int -> bool ; true if state labeled by x is a final state
                [final? (lambda (x)
-                         (ormap (lambda (y) (eq? x (first y))) finals))]
+                         (ormap (lambda (y) (eq? x (car y))) finals))]
 
-               [transitions (dfa-transitions)]
+               [transitions (dfa-transitions in)]
+               ;; : transition -> (list-of int)
+               [destinations (lambda (x)
+                               (map (lambda (y) (id-of (cdr y))) (rest x)))]
+               ;; : transition -> (list-of char-set)
+               [edges (lambda (x) (map car (rest x)))]
                ;; : transition -> syntax-object
                [trans-expand
                 (lambda (tlist)
-                  (with-syntax ([src (id-of (first tlist))]
-                                [empty-case (final? (first tlist))]
-                                [(set ...) (map car (rest tlist))]
-                                [(dst ...)
-                                 (map (lambda (y) (id-of (cadr y))) tlist)])
+                  (with-syntax ([src (id-of (car tlist))]
+                                [empty-case (final? (car tlist))]
+                                [(set ...) (edges tlist)]
+                                [(dst ...) (destinations tlist)])
                    ;; Heart of the matcher
                    #'[src
                       (lambda (stream)
