@@ -5,6 +5,7 @@
            parser-tools/private-lex/deriv
            parser-tools/private-lex/util
            mzlib/integer-set)
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Only for Repl testing, promise :) ...
   (provide
    (combine-out (all-defined-out)
@@ -21,11 +22,25 @@
                       rs)
                  c)))
 
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; From Deriv-Racket
   ;; (make-dfa num-states start-state final-states/actions transitions)
   ;;  where num-states, start-states are int
   ;;  final-states/actions is (list-of (cons-int syntax-object))
   ;;  transitions is (list-of (cons int (list-of (cons char-set int))))
+
+  ;; : (list-of transitions) -> (list-of transitions)
+  ;; the vanillla list from dfa-transitions is minimal
+  ;; => need to insert states that have no outgoing edges
+  ;;    otherwise we will try to invoke an undefined function
+  ;;    when we try to run the 'dfa' family of functions
+  (define (clean-trans trans num)
+    (let loop ([lot trans][n 0] [acc '()])
+      (cond [(and (empty? lot) (eq? n num)) (reverse acc)]
+            [(and (not (empty? lot)) (eq? n (caar lot)))
+             (loop (cdr lot) (add1 n) (cons (car lot) acc))]
+            [(empty? lot) (loop lot (add1 n) (cons (cons n empty) acc))]
+            [else (loop (cdr lot) (add1 n) (cons (cons n empty) acc))])))
 
   ;;  : dfa -> syntax-object
   (define (dfa-expand in)
@@ -40,7 +55,7 @@
                [final? (lambda (x)
                          (ormap (lambda (y) (eq? x (car y))) finals))]
 
-               [transitions (dfa-transitions in)]
+               [transitions (clean-trans (dfa-transitions in) num)]
                ;; : transition -> (list-of int)
                [destinations (lambda (x)
                                (map (lambda (y) (id-of (cdr y))) (rest x)))]
@@ -102,6 +117,11 @@
                                               (complement (union (concatenation (intersection) "01")
                                                                  (repetition 1 +inf.0 "1")))))))
   (define t14 (build-test-dfa `((complement "1"))))
+  
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;; Tests
+  ;; This should eval to true
+  ;; (eval (cons (syntax->datum (dfa-expand t4)) (cons (quote (cons #\a (cons #\a (cons #\a (cons #\a empty))))) empty)))
 
   ;; Some tests from re.rkt
   (test-block ((c (make-cache))
@@ -137,4 +157,4 @@
                 ((deriveR r9 a c) r2)
                 ((deriveR r9 b c) z)
                 ((deriveR (->re `(repetition 1 2 "ab") c) a c)
-                 (->re `(concatenation "b" (repetition 0 1 "ab")) c)))) 
+                 (->re `(concatenation "b" (repetition 0 1 "ab")) c))))
