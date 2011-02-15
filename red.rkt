@@ -21,40 +21,49 @@
                       rs)
                  c)))
 
+  ;; From Deriv-Racket
+  ;; (make-dfa num-states start-state final-states/actions transitions)
+  ;;  where num-states, start-states are int
+  ;;  final-states/actions is (list-of (cons-int syntax-object))
+  ;;  transitions is (list-of (cons int (list-of (cons char-set int))))
 
-  ;; Macro for turning a DFA into a set of mutually recursive functions
-  (define-syntax rematch
-    (syntax-rules ()
-      [(_ (dfa num-states init final trans))
-       (let-syntax
-           ([trans-help
-             (syntax-rules (quote)
-               [(_ (quote ((src (set dest) (... ...)) (... ...))))
-                (letrec ([(state-id src)
-                         (lambda (stream) 
-                           ;; This should really call a helper function to
-                           ;; to see if src is in the set of final states....
-                           (cond [(empty? stream) false]
-                                 [else
-                                  (let ([hd (first stream)] [tl (rest stream)])
-                                    (cond [(member? hd set) (dest tl)]
-                                          (... ...)
-                                          [else false]))]))]
-                         (... ...))
-                  (state-id init))])])
-         (trans-help trans))]))
+  ;;  : dfa -> syntax
+  (define (dfa-expand in)
+    (if (not (dfa? in)) (error 'dfa-expand "improper input")
+        (let* ([id (lambda (x) x)]
+               [num (dfa-num-states in)]
+               [init (dfa-start-state in)]
+               [state-ids (generate-temporaries (build-list num id))]
+               [id-of (lambda (x) (list-ref state-ids x))]
+               [finals (dfa-final-states/actions in)]
+               ;; : int -> bool ; true if state labeled by x is a final state
+               [final? (lambda (x)
+                         (ormap (lambda (y) (eq? x (first y))) finals))]
 
-  (define (state-id x) (string->symbol (number->string x)))
+               [transitions (dfa-transitions)]
+               ;; : transition -> syntax-object
+               [trans-expand
+                (lambda (tlist)
+                  (with-syntax ([src (id-of (first tlist))]
+                                [empty-case (final? (first tlist))]
+                                [(set ...) (map car (rest tlist))]
+                                [(dst ...)
+                                 (map (lambda (y) (id-of (cadr y))) tlist)])
+                   ;; Heart of the matcher
+                   #'[src
+                      (lambda (stream)
+                        (if (empty? stream) empty-case
+                            (let ([hd (char->integer (first stream))]
+                                  [tl (rest-stream)])
+                              (cond [(member? hd set) (dest tl)]
+                                    ...
+                                    [else false]))))]))])
+          (with-syntax ([(node ...) (map trans-expand transitions)]
+                        [start (id-of init)])
+            #'(letrec (node ...)
+                start)))))
 
-
-
-  (rematch (dfa 5 0 '() '((0 (1 2) (3 4)) (1 (5 6) (7 8)))))
-
-
-
-
-
-    ;; Test DFA's From deriv.rkt, making sure we can build everything
+  ;; Test DFA's From deriv.rkt, making sure we can build everything
   (define t1 (build-test-dfa null))
   (define t2 (build-test-dfa `(#\a)))
   (define t3 (build-test-dfa `(#\a #\b)))
@@ -89,7 +98,7 @@
                                               (complement (union (concatenation (intersection) "01")
                                                                  (repetition 1 +inf.0 "1")))))))
   (define t14 (build-test-dfa `((complement "1"))))
-  
+
   ;; Some tests from re.rkt
   (test-block ((c (make-cache))
                (a (char->integer #\a))
