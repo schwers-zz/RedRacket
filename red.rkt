@@ -58,8 +58,8 @@
                       (lambda (stream)
                         (if (empty? stream) empty-case
                             (let ([hd (char->integer (first stream))]
-                                  [tl (rest-stream)])
-                              (cond [(member? hd set) (dest tl)]
+                                  [tl (rest stream)])
+                              (cond [(member? hd set) (dst tl)]
                                     ...
                                     [else false]))))]))])
           (with-syntax ([(node ...) (map trans-expand transitions)]
@@ -137,4 +137,4 @@
                 ((deriveR r9 a c) r2)
                 ((deriveR r9 b c) z)
                 ((deriveR (->re `(repetition 1 2 "ab") c) a c)
-                 (->re `(concatenation "b" (repetition 0 1 "ab")) c))))
+                 (->re `(concatenation "b" (repetition 0 1 "ab")) c)))) 
