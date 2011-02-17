@@ -74,17 +74,21 @@
                                 [n strlen*] [string string*])
                    ;; Heart of the matcher
                    #'[src
-                      (lambda (i)
+                      (lambda (i next)
                         (if (unsafe-fx= i n) empty-case
-                            (let ([hd (char->integer (unsafe-string-ref string i))])
-                              (cond [(member? hd set)
-                                     (dst (unsafe-fx+ i 1))]
-                                    ...
-                                    [else false]))))]))])
+                            (cond [(member? next set)
+                                   (dst (unsafe-fx+ i 1)
+                                        (char->integer
+                                         (unsafe-string-ref
+                                          string
+                                          (unsafe-fx+ i 1))))]
+                                  ...
+                                  [else false])))]))])
           (with-syntax ([(node ...) (map trans-expand transitions)]
                         [start (id-of init)]
                         [n strlen*] [string string*])
             #'(lambda (string)
                 (letrec ([n (unsafe-string-length string)]
                          node ...)
-                  (start 0))))))))
+                  (start 0 (char->integer
+                            (unsafe-string-ref string 0))))))))))

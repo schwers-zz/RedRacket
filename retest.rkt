@@ -76,8 +76,8 @@
    (define (run-tests-log-to name)
      (with-output-to-file (string-append "testdata/"name)
        (lambda()
-         (printf "Changed dfa-expand to use strings~n~n")
+         (printf "Started passing the next string-ref~n~n")
          (run-tests))))
 
-   (run-tests-log-to "testlog2.txt")
+   (run-tests-log-to "testlog3.txt")
    )
