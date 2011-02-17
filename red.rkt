@@ -4,7 +4,8 @@
   (require parser-tools/private-lex/re
            parser-tools/private-lex/deriv
            parser-tools/private-lex/util
-           mzlib/integer-set)
+           mzlib/integer-set
+           racket/unsafe/ops)
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Only for Repl testing, promise :) ...
   (provide
@@ -49,6 +50,8 @@
                [num (dfa-num-states in)]
                [init (dfa-start-state in)]
                [state-ids (generate-temporaries (build-list num id))]
+               [strlen* (car (generate-temporaries '(0)))]
+               [string* (car (generate-temporaries '(0)))]
                [id-of (lambda (x) (list-ref state-ids x))]
                [finals (dfa-final-states/actions in)]
                ;; : int -> bool ; true if state labeled by x is a final state
@@ -67,17 +70,21 @@
                   (with-syntax ([src (id-of (car tlist))]
                                 [empty-case (final? (car tlist))]
                                 [(set ...) (edges tlist)]
-                                [(dst ...) (destinations tlist)])
+                                [(dst ...) (destinations tlist)]
+                                [n strlen*] [string string*])
                    ;; Heart of the matcher
                    #'[src
-                      (lambda (stream)
-                        (if (empty? stream) empty-case
-                            (let ([hd (char->integer (first stream))]
-                                  [tl (rest stream)])
-                              (cond [(member? hd set) (dst tl)]
+                      (lambda (i)
+                        (if (unsafe-fx= i n) empty-case
+                            (let ([hd (char->integer (unsafe-string-ref string i))])
+                              (cond [(member? hd set)
+                                     (dst (unsafe-fx+ i 1))]
                                     ...
                                     [else false]))))]))])
           (with-syntax ([(node ...) (map trans-expand transitions)]
-                        [start (id-of init)])
-            #'(letrec (node ...)
-                start))))))
+                        [start (id-of init)]
+                        [n strlen*] [string string*])
+            #'(lambda (string)
+                (letrec ([n (unsafe-string-length string)]
+                         node ...)
+                  (start 0))))))))

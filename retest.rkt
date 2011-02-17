@@ -17,16 +17,6 @@
        [(_ dfa)
         (eval-syntax (dfa-expand dfa))]))
 
-   ;; Around for turning a string into an equivalent char
-   ;; list, strictly for the 'old' version of dfa-expand
-   (define (explode str)
-     (let loop ((i 0) (n (unsafe-string-length str)) (acc '()))
-       (cond [(unsafe-fx= i n) (reverse acc)]
-             [else (loop (unsafe-fx+ 1 i)
-                         n
-                         (cons (unsafe-string-ref str i) acc))])))
-
-
    ;; Tests -- DFA + regexp + input, and an associated test
 
 
@@ -34,13 +24,13 @@
    ;; with contract : (listof char) -> boolean
 
    ;; : DFA-MATCH RE (listof char) regexp-string string string Nat -> Unit
-   (define (compare-speed dfa-match dfa-in re re-in description size)
+   (define (compare-speed dfa-match  re input description size)
      (printf "Now testing: ~a ~n" description)
      (printf "Input size approx: ~a ~n" size)
      (printf "Built in re matcher: ~n")
-     (time (regexp-match? re re-in))
+     (time (regexp-match? re input))
      (printf "DFA-Match: ~n")
-     (time (dfa-match dfa-in))
+     (time (dfa-match input))
      (printf "end test~n~n"))
 
 
@@ -59,26 +49,23 @@
    (define email "schwers.r@gmail.com")
    (define str1 (string-append s1 email s1))
    (define str2 (string-append s2 email s2))
-   (define str1-list (explode str1))
-   (define str2-list (explode str2))
 
    (define (t1)
-     (compare-speed *email* str1-list  "schwers.r@gmail.com" str1
+     (compare-speed *email* "schwers.r@gmail.com" str1
                    "*schwers.r@gmail.com*" 20000))
 
 
    (define (t2)
-     (compare-speed *email* str2-list "schwers.r@gmail.com" str2
+     (compare-speed *email*"schwers.r@gmail.com" str2
                     "*schwers.r@gmail.com*" 2000000))
 
    ;; ^a*$
-   (define a*-only (benchmark (build-test-dfa '((repetition 0 +inf.0 #\a)))))
+  (define a*-only (benchmark (build-test-dfa '((repetition 0 +inf.0 #\a)))))
 
-   (define a*-only-list (explode s2))
 
    (define (t3)
-     (compare-speed a*-only a*-only-list "^a*$" str2
-                     "only a* -- ^a*$" 2000000))
+     (compare-speed a*-only "^a*$" s2
+                    "only a* -- ^a*$" 2000000))
 
    ;; (listof tests)
    (define all-tests (list t1 t2 t3))
@@ -88,7 +75,9 @@
 
    (define (run-tests-log-to name)
      (with-output-to-file (string-append "testdata/"name)
-       run-tests))
+       (lambda()
+         (printf "Changed dfa-expand to use strings~n~n")
+         (run-tests))))
 
-   (run-tests-log-to "testlog1.txt")
-)
+   (run-tests-log-to "testlog2.txt")
+   )
