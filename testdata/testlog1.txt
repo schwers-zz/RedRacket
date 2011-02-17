@@ -1,0 +1,24 @@
+Now testing: *schwers.r@gmail.com* 
+Input size approx: 20000 
+Built in re matcher: 
+cpu time: 2 real time: 2 gc time: 0
+DFA-Match: 
+cpu time: 128 real time: 129 gc time: 0
+end test
+
+Now testing: *schwers.r@gmail.com* 
+Input size approx: 2000000 
+Built in re matcher: 
+cpu time: 14 real time: 14 gc time: 0
+DFA-Match: 
+cpu time: 1391 real time: 1400 gc time: 0
+end test
+
+Now testing: only a* -- ^a*$ 
+Input size approx: 2000000 
+Built in re matcher: 
+cpu time: 40 real time: 41 gc time: 0
+DFA-Match: 
+cpu time: 667 real time: 670 gc time: 0
+end test
+
