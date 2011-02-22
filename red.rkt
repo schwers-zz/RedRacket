@@ -4,8 +4,11 @@
   (require parser-tools/private-lex/re
            parser-tools/private-lex/deriv
            parser-tools/private-lex/util
-           mzlib/integer-set
-           racket/unsafe/ops)
+           (prefix-in is: mzlib/integer-set)
+           racket/unsafe/ops
+           (for-template racket/base
+                         racket/unsafe/ops
+                         (prefix-in is: mzlib/integer-set)))
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Only for Repl testing, promise :) ...
   (provide
@@ -70,20 +73,20 @@
                   (with-syntax ([src (id-of (car tlist))]
                                 [empty-case (final? (car tlist))]
                                 [(set ...) (edges tlist)]
-                                [(dst ...) (destinations tlist)]
+                                [(dst ...) (map syntax->datum (destinations tlist))]
                                 [n strlen*] [string string*])
                    ;; Heart of the matcher
                    #'[src
                       (lambda (i next)
                         (if (unsafe-fx= i n) empty-case
-                            (cond [(member? next set)
+                            (cond [(is:member? next set)
                                    (dst (unsafe-fx+ i 1)
                                         (char->integer
                                          (unsafe-string-ref
                                           string
                                           (unsafe-fx+ i 1))))]
                                   ...
-                                  [else false])))]))])
+                                  [else #f])))]))])
           (with-syntax ([(node ...) (map trans-expand transitions)]
                         [start (id-of init)]
                         [n strlen*] [string string*])
