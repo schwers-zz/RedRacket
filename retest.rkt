@@ -1,8 +1,11 @@
 ;; Test Suite and test DFA's
 (module test racket
    (require "red.rkt"
-            mzlib/integer-set
-            racket/unsafe/ops)
+            (prefix-in is: mzlib/integer-set)
+            racket/unsafe/ops
+            (for-syntax "red.rkt"
+                        racket/unsafe/ops
+                        (prefix-in is: mzlib/integer-set)))
    ;; Again, just to make testing from REPL easier....
    (provide
     (combine-out (all-defined-out)
@@ -12,10 +15,6 @@
    ;; Build a set of functions corresponding to an RE->DFA
    ;; use this like (define f1 (benchmark dfa))
    ;;               (f1 "someinput")
-   (define-syntax benchmark
-     (syntax-rules ()
-       [(_ dfa)
-        (eval-syntax (dfa-expand dfa))]))
 
    ;; Tests -- DFA + regexp + input, and an associated test
 
@@ -33,15 +32,18 @@
      (time (dfa-match input))
      (printf "end test~n~n"))
 
-
    ;; .*schwers.r@gmail.com.*
-   (define *email*
-     (benchmark
+   (define-for-syntax  *email*
+     (dfa-expand
       (build-test-dfa
        '((concatenation (repetition 0 +inf.0 (char-range "0" "z"))
                         #\s #\c #\h #\w #\e #\r #\s #\. #\r
                         #\@ #\g #\m #\a #\i #\l #\. #\c #\o #\m
                         (repetition 0 +inf.0 (char-range "0" "z")))))))
+
+   (define-syntax (bench-*email* stx)
+     (syntax-case stx ()
+       [(_) *email*]))
 
 
    (define s1 (make-string 100000 #\a))
@@ -50,6 +52,9 @@
    (define str1 (string-append s1 email s1))
    (define str2 (string-append s2 email s2))
 
+   (time ((bench-*email*) str1))
+
+   #|
    (define (t1)
      (compare-speed *email* "schwers.r@gmail.com" str1
                    "*schwers.r@gmail.com*" 20000))
@@ -80,4 +85,5 @@
          (run-tests))))
 
    (run-tests-log-to "testlog3.txt")
+   |#
    )
