@@ -4,8 +4,12 @@
             (prefix-in is: mzlib/integer-set)
             racket/unsafe/ops
             (for-syntax "red.rkt"
+                        racket
                         racket/unsafe/ops
-                        (prefix-in is: mzlib/integer-set)))
+                        (prefix-in is: mzlib/integer-set))
+            (for-template racket
+                          racket/unsafe/ops
+                          (prefix-in is: mzlib/integer-set)))
 
    ;; Again, just to make testing from REPL easier....
    (provide
@@ -32,6 +36,18 @@
      (printf "DFA-Match: ~n")
      (time (dfa-match input))
      (printf "end test~n~n"))
+
+   ;; abc
+   (define-for-syntax abc
+     (dfa-expand
+      (build-test-dfa
+       '(#\a #\b #\c))))
+
+   (define-syntax (bench-abc stx)
+     (syntax-case stx ()
+       [(_) abc]))
+
+   (time ((bench-abc) "abc"))
 
    ;; .*schwers.r@gmail.com.*
    (define-for-syntax  *email*

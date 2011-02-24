@@ -6,9 +6,13 @@
            parser-tools/private-lex/util
            (prefix-in is: mzlib/integer-set)
            racket/unsafe/ops
-           (for-template racket/base
+           (for-syntax racket
+                       racket/unsafe/ops
+                       (prefix-in is: mzlib/integer-set))
+           (for-template racket
                          racket/unsafe/ops
-                         (prefix-in is: mzlib/integer-set)))
+                         (prefix-in is: mzlib/integer-set))
+)
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Only for Repl testing, promise :) ...
   (provide
