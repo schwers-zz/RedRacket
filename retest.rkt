@@ -1,11 +1,12 @@
 ;; Test Suite and test DFA's
-(module test racket
+(module retest racket
    (require "red.rkt"
             (prefix-in is: mzlib/integer-set)
             racket/unsafe/ops
             (for-syntax "red.rkt"
                         racket/unsafe/ops
                         (prefix-in is: mzlib/integer-set)))
+
    ;; Again, just to make testing from REPL easier....
    (provide
     (combine-out (all-defined-out)
