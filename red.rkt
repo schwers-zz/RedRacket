@@ -77,7 +77,7 @@
                   (with-syntax ([src (id-of (car tlist))]
                                 [empty-case (final? (car tlist))]
                                 [(set ...) (edges tlist)]
-                                [(dst ...) (map syntax->datum (destinations tlist))]
+                                [(dst ...) (destinations tlist)]
                                 [n strlen*] [string string*])
                    ;; Heart of the matcher
                    #'[src
