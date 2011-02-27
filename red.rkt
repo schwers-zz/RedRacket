@@ -40,12 +40,135 @@
   ;;    otherwise we will try to invoke an undefined function
   ;;    when we try to run the 'dfa' family of functions
   (define (clean-trans trans num)
-    (let loop ([lot trans][n 0] [acc '()])
-      (cond [(and (empty? lot) (eq? n num)) (reverse acc)]
-            [(and (not (empty? lot)) (eq? n (caar lot)))
+    (let loop ([lot trans][n 0] [acc null])
+      (cond [(and (null? lot) (eq? n num)) (reverse acc)]
+            [(and (not (null? lot)) (eq? n (caar lot)))
              (loop (cdr lot) (add1 n) (cons (car lot) acc))]
-            [(empty? lot) (loop lot (add1 n) (cons (cons n empty) acc))]
-            [else (loop (cdr lot) (add1 n) (cons (cons n empty) acc))])))
+            [(empty? lot) (loop lot (add1 n) (cons (cons n null) acc))]
+            [else (loop (cdr lot) (add1 n) (cons (cons n null) acc))])))
+
+
+  ;; Functions for "Roll-our-own Binary Search"...
+
+  ;; A Range is a (Pair a b) where a <= b
+  ;; A RangeMapping is a (Pair Range Dest)
+  ;; A Dest is the sytanx for the destination state of the DFA
+
+  ;; : (Listof Naturals) Dest -> (Listof RangeMapping)
+  (define (to-ranges lon dest)
+    (if (null? lon) (error 'to-ranges "Given an empty series for mapping")
+        (let loop ([lon lon] [acc null])
+          (if (null? lon) (reverse acc)
+              (let ([r (get-first-range lon)])
+                (loop (cdr r) (cons (cons (car r) dest) acc)))))))
+
+  ;; : (Listof Naturals) (Pair Range (Listof Naturals))
+  (define (get-first-range lon)
+    (if (null? lon) (error 'get-first-range "Given an empty series")
+        (let loop ([lon (cdr lon)] [acc (cons (car lon) null)])
+          (if (null? lon) (cons (sequence->range (reverse acc)) null)
+               (let ([a (car lon)])
+                 (if (unsafe-fx= (unsafe-fx+ (car acc) 1) a)
+                     (loop (cdr lon) (cons a acc))
+                     (cons (sequence->range (reverse acc)) lon)))))))
+
+  ;; (Listof Naturals) -> (Pair Natural Natural)
+  (define (sequence->range lon)
+    (if (null? lon) (error 'sequence-to-range "Given an empy sequnece")
+        (let ([a (car lon)])
+          (if (null? (cdr lon)) (cons a a)
+              (let loop ([lon (cdr lon)])
+                (if (null? (cdr lon)) (cons a (car lon))
+                    (loop (cdr lon))))))))
+
+  ;; (Listof RangeMapping) -> Natural
+  ;; Returns the start of the first RangeMapping in X
+  (define (start-of-ranges X) (caaar X))
+
+  ;; : (Listof RangeMapping) (Listof RangeMapping) -> (Listof RangeMapping)
+  ;; Assumes that (dest-of A) is different than (dest-of B)
+  ;; and that the ranges are sorted
+  (define (merge-range-dests A B)
+    (cond [(null? A) B]
+          [(null? B) A]
+          [(<= (start-of-ranges A) (start-of-ranges B))
+           (cons (car A) (merge-range-dests (cdr A) B))]
+          [#t (cons (car B) (merge-range-dests A (cdr B)))]))
+
+  ;; : (Listof RangeMapping) Natural
+  ;;     -> (Pair (Listof RangeMapping) (Listof RangeMapping))
+  ;; Returns a parition of the list where the RangeMapping whose start
+  ;; is partitionn, is excluded, and RangeMappings in the first part of the pair
+  ;; are less than partition, and those in the rest are greater than partition
+  (define (list-rmaps->partition rmaps part)
+    (let loop ([rmps rmaps] [acc1 null] [acc2 null])
+      (if (empty? rmps) (cons (reverse acc1) (reverse acc2))
+          (let ([start (start-of-ranges rmps)])
+            (cond [(< start part) (loop (cdr rmps) (cons (car rmps) acc1) acc2)]
+                  [(> start part) (loop (cdr rmps) acc1 (cons (car rmps) acc2))]
+                  [#t (loop (cdr rmps) acc1 acc2)])))))
+
+  ;; : (Listof (Pair Range Dest)) -> Syntax-Object
+  (define (rmaps->binary-search rmaps)
+    (let* ([part-ref (unsafe-fxquotient (length rmaps) 2)]
+           [part (list-ref rmaps part-ref)]
+           [low (caar part)]
+           [hi (cdar part)]
+           [going (cdr part)]
+           [pair-parts (list-rmaps->partition rmaps low)]
+           [less (car pair-parts)]
+           [more (cdr pair-parts)])
+      ;; Syntax-Transformation with slight optimizations
+      (cond [(and (null? less) (null? more))
+             (if (unsafe-fx= hi low)
+                 ;; If there's nothing left and the range is a single number
+                 (with-syntax ([dest going] [num low])
+                   #'(if (unsafe-fx= n num) (dest a b) #f))
+                 ;; If there's a range
+                 (with-syntax ([dest going] [low low] [hi hi])
+                     #'(if (unsafe-fxand (unsafe-fx<= n hi)
+                                         (unsafe-fx>= n low))
+                           (dest a b)
+                           #f)))]
+          [(null? less)
+           (if (unsafe-fx= hi low)
+               (with-syntax ([upper-range (rmaps->binary-search more)]
+                             [dest going] [num low])
+                 #'(if (unsafe-fx> n num)
+                       upper-range
+                       (if (unsafe-fx= n num) (dest a b) #f)))
+               (with-syntax ([upper-range (rmaps->binary-search more)]
+                             [dest going] [low low] [hi hi])
+                 #'(if (unsafe-fx> n hi)
+                       upper-range
+                       (if (unsafe-fxand (unsafe-fx<= n hi)
+                                         (unsafe-fx>= n low))
+                           (dest a b)
+                           #f))))]
+           [(null? more)
+            (if (unsafe-fx= hi low)
+                (with-syntax ([lower-range (rmaps->binary-search less)]
+                              [dest going] [num low])
+                  #'(if (unsafe-fx< n num)
+                        lower-range
+                        (if (unsafe-fx= n num) (dest a b) #f)))
+                (with-syntax ([lower-range (rmaps->binary-search less)]
+                              [dest going] [low low] [hi hi])
+                  #'(if (unsafe-fx< n low)
+                        lower-range
+                        (if (unsafe-fxand (unsafe-fx<= n hi)
+                                          (unsafe-fx>= n low))
+                            (dest a b)
+                            #f))))]
+           [#t
+            (with-syntax ([lower-range (rmaps->binary-search less)]
+                          [upper-range (rmaps->binary-search more)]
+                          [dest going] [low low] [hi hi])
+              #'(if (unsafe-fx> n hi)
+                    upper-range
+                    (if (unsafe-fx< n low)
+                        lower-range
+                        (dest a b))))])))
 
   ;;  : dfa -> syntax-object
   (define (dfa-expand in)
@@ -63,36 +186,37 @@
                          (ormap (lambda (y) (eq? x (car y))) finals))]
 
                [transitions (clean-trans (dfa-transitions in) num)]
-               ;; : (Pair <integer-set> int) -> Syntax-object
-               [build-edge
+               ;; : (Pair <integer-set> Natural) -> (Listof RangeMapping)
+               [build-range-map
                 (lambda (pair)
-                  (with-syntax ([(chars ...) (is:foldr cons null (car pair))]
-                                [dest (id-of (cdr pair))]
-                                [string string*])
-                    #'[(or (= next chars) ...)
-                       (dest (unsafe-fx+ i 1)
-                             (char->integer
-                              (unsafe-string-ref string
-                                                 (unsafe-fx+ i 1))))]))]
-               ;; : (Listof (Pair <integer-set> int) -> (Listof Syntax-object)
-               [build-edges (lambda (pairs) (map build-edge pairs))]
-               ;; : transition -> syntax-object
+                  (let ([outgoing-chars (is:foldr cons null (car pair))]
+                        [dest (id-of (cdr pair))])
+                    (to-ranges outgoing-chars dest)))]
+               ;; : (Listof (Pair <integer-set> Natural)) -> (Listof RangeMapping)
+               [sets->range-mappings
+                (lambda (pairs)
+                  (foldl merge-range-dests null (map build-range-map pairs)))]
+               ;; : (List Natural (Listof (Pair <integer-set> int)) -> Syntax-object
                [trans-expand
                 (lambda (tlist)
                   (with-syntax ([src (id-of (car tlist))]
                                 [empty-case (final? (car tlist))]
-                                [(edges ...) (build-edges (cdr tlist))]
-                                [n strlen*] [string string*])
-                     #'[src
-                        (lambda (i next)
-                          (if (unsafe-fx= i n) empty-case
-                              (cond edges ...
-                                    [else #f])))]))])
+                                [bst (rmaps->binary-search
+                                      (sets->range-mappings (cdr tlist)))]
+                                [len strlen*] [string string*])
+                    #'[src
+                       (lambda (i n)
+                         (if (unsafe-fx= i len) empty-case
+                             (let ([a (unsafe-fx+ i 1)]
+                                   [b (char->integer (unsafe-string-ref string i))])
+                               bst)))]))])
+
           (with-syntax ([(nodes ...) (map trans-expand transitions)]
                         [start (id-of init)]
                         [n strlen*] [string string*])
-            #'(lambda (string)
-                (letrec ([n (unsafe-string-length string)]
-                         nodes ...)
-                  (start 0 (char->integer
-                            (unsafe-string-ref string 0))))))))))
+             #'(lambda (string)
+                 (letrec ([n (unsafe-string-length string)]
+                          nodes ...)
+                   (start 0 (char->integer
+                             (unsafe-string-ref string 0)))))))))
+)
