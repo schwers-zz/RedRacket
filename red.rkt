@@ -1,5 +1,4 @@
  ;; Matching Regular Expressions with Derivatives
-
 (module red racket
   (require parser-tools/private-lex/re
            parser-tools/private-lex/deriv
@@ -10,9 +9,7 @@
                        racket/unsafe/ops
                        (prefix-in is: mzlib/integer-set))
            (for-template racket
-                         racket/unsafe/ops
-                         (prefix-in is: mzlib/integer-set))
-)
+                         racket/unsafe/ops))
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Only for Repl testing, promise :) ...
   (provide
@@ -66,36 +63,36 @@
                          (ormap (lambda (y) (eq? x (car y))) finals))]
 
                [transitions (clean-trans (dfa-transitions in) num)]
-               ;; : transition -> (list-of int)
-               [destinations (lambda (x)
-                               (map (lambda (y) (id-of (cdr y))) (rest x)))]
-               ;; : transition -> (list-of char-set)
-               [edges (lambda (x) (map car (rest x)))]
+               ;; : (Pair <integer-set> int) -> Syntax-object
+               [build-edge
+                (lambda (pair)
+                  (with-syntax ([(chars ...) (is:foldr cons null (car pair))]
+                                [dest (id-of (cdr pair))]
+                                [string string*])
+                    #'[(or (= next chars) ...)
+                       (dest (unsafe-fx+ i 1)
+                             (char->integer
+                              (unsafe-string-ref string
+                                                 (unsafe-fx+ i 1))))]))]
+               ;; : (Listof (Pair <integer-set> int) -> (Listof Syntax-object)
+               [build-edges (lambda (pairs) (map build-edge pairs))]
                ;; : transition -> syntax-object
                [trans-expand
                 (lambda (tlist)
                   (with-syntax ([src (id-of (car tlist))]
                                 [empty-case (final? (car tlist))]
-                                [(set ...) (edges tlist)]
-                                [(dst ...) (destinations tlist)]
+                                [(edges ...) (build-edges (cdr tlist))]
                                 [n strlen*] [string string*])
-                   ;; Heart of the matcher
-                   #'[src
-                      (lambda (i next)
-                        (if (unsafe-fx= i n) empty-case
-                            (cond [(is:member? next set)
-                                   (dst (unsafe-fx+ i 1)
-                                        (char->integer
-                                         (unsafe-string-ref
-                                          string
-                                          (unsafe-fx+ i 1))))]
-                                  ...
-                                  [else #f])))]))])
-          (with-syntax ([(node ...) (map trans-expand transitions)]
+                     #'[src
+                        (lambda (i next)
+                          (if (unsafe-fx= i n) empty-case
+                              (cond edges ...
+                                    [else #f])))]))])
+          (with-syntax ([(nodes ...) (map trans-expand transitions)]
                         [start (id-of init)]
                         [n strlen*] [string string*])
             #'(lambda (string)
                 (letrec ([n (unsafe-string-length string)]
-                         node ...)
+                         nodes ...)
                   (start 0 (char->integer
                             (unsafe-string-ref string 0))))))))))
