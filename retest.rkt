@@ -1,22 +1,14 @@
 ;; Test Suite and test DFA's
 (module retest racket
    (require "red.rkt"
-            (prefix-in is: mzlib/integer-set)
             racket/unsafe/ops
             (for-syntax "red.rkt"
                         racket
-                        racket/unsafe/ops
-                        (prefix-in is: mzlib/integer-set))
-            (for-template racket
-                          racket/unsafe/ops
-                          (prefix-in is: mzlib/integer-set)))
-
+                        racket/unsafe/ops))
    ;; Again, just to make testing from REPL easier....
    (provide
     (combine-out (all-defined-out)
-                 (all-from-out "red.rkt")
-                 (all-from-out mzlib/integer-set)))
-
+                 (all-from-out "red.rkt")))
    ;; Build a set of functions corresponding to an RE->DFA
    ;; use this like (define f1 (benchmark dfa))
    ;;               (f1 "someinput")
@@ -28,7 +20,7 @@
    ;; with contract : (listof char) -> boolean
 
    ;; : DFA-MATCH RE (listof char) regexp-string string string Nat -> Unit
-   (define (compare-speed dfa-match  re input description size)
+   (define (compare-speed dfa-match re input description size)
      (printf "Now testing: ~a ~n" description)
      (printf "Input size approx: ~a ~n" size)
      (printf "Built in re matcher: ~n")
@@ -37,20 +29,16 @@
      (time (dfa-match input))
      (printf "end test~n~n"))
 
-   ;; abc
-   (define-for-syntax abc
-     (dfa-expand
-      (build-test-dfa
-       '(#\a #\b #\c))))
 
-   (define-syntax (bench-abc stx)
-     (syntax-case stx ()
-       [(_) abc]))
+   (define s1 (make-string 100000 #\a))
+   (define s2 (make-string 1000000 #\a))
+   (define email "schwers.r@gmail.com")
+   (define str1 (string-append s1 email s1))
+   (define str2 (string-append s2 email s2))
 
-   (time ((bench-abc) "abc"))
 
    ;; .*schwers.r@gmail.com.*
-   (define-for-syntax  *email*
+   (define-for-syntax  *email*-stx
      (dfa-expand
       (build-test-dfa
        '((concatenation (repetition 0 +inf.0 (char-range "0" "z"))
@@ -60,18 +48,11 @@
 
    (define-syntax (bench-*email* stx)
      (syntax-case stx ()
-       [(_) *email*]))
+       [(_) *email*-stx]))
 
 
-   (define s1 (make-string 100000 #\a))
-   (define s2 (make-string 1000000 #\a))
-   (define email "schwers.r@gmail.com")
-   (define str1 (string-append s1 email s1))
-   (define str2 (string-append s2 email s2))
+   (define *email* (bench-*email*))
 
-   (time ((bench-*email*) str1))
-
-   #|
    (define (t1)
      (compare-speed *email* "schwers.r@gmail.com" str1
                    "*schwers.r@gmail.com*" 20000))
@@ -82,7 +63,15 @@
                     "*schwers.r@gmail.com*" 2000000))
 
    ;; ^a*$
-  (define a*-only (benchmark (build-test-dfa '((repetition 0 +inf.0 #\a)))))
+   (define-for-syntax a*-only-stx
+     (dfa-expand
+      (build-test-dfa '((repetition 0 +inf.0 #\a)))))
+
+   (define-syntax (bench-a*-only stx)
+     (syntax-case stx ()
+       [(_) *email*-stx]))
+
+   (define a*-only (bench-a*-only))
 
 
    (define (t3)
@@ -101,6 +90,6 @@
          (printf "Started passing the next string-ref~n~n")
          (run-tests))))
 
-   (run-tests-log-to "testlog3.txt")
-   |#
+  ;; (run-tests-log-to "testlog4.txt")
+
    )
