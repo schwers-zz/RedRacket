@@ -22,7 +22,7 @@
    ;; : DFA-MATCH RE (listof char) regexp-string string string Nat -> Unit
    (define (compare-speed dfa-match re input description)
      (printf "Now testing: ~a ~n" description)
-     (printf "Input size approx: ~a ~n" (string-length input)
+     (printf "Input size approx: ~a ~n" (string-length input))
      (printf "Built in re matcher: ~n")
      (time (regexp-match? re input))
      (printf "DFA-Match: ~n")
@@ -34,21 +34,22 @@
      (if (<= pow 0) str
          (buildByTwos (string-append str str) (- pow 1))))
 
-   (define s1 (buildByTwos "a" 26))
-   (define s2 (buildByTwos "a" 32))
+   (define s1 (buildByTwos "a" 20))
+   (define s2 (buildByTwos "a" 26))
    (define email "schwers.r@gmail.com")
    (define str1 (string-append s1 email s1))
    (define str2 (string-append s2 email s2))
 
 
    ;; .*schwers.r@gmail.com.*
-   (define-for-syntax  *email*-stx
+   (define-for-syntax *email*-stx
      (dfa-expand
       (build-test-dfa
        '((concatenation (repetition 0 +inf.0 (char-range "0" "z"))
                         #\s #\c #\h #\w #\e #\r #\s #\. #\r
                         #\@ #\g #\m #\a #\i #\l #\. #\c #\o #\m
                         (repetition 0 +inf.0 (char-range "0" "z")))))))
+
 
    (define-syntax (bench-*email* stx)
      (syntax-case stx ()
@@ -63,7 +64,7 @@
 
 
    (define (t2)
-     (compare-speed *email*"schwers.r@gmail.com" str2
+     (compare-speed *email* "schwers.r@gmail.com" str2
                     "*schwers.r@gmail.com*"))
 
    ;; ^a*$
@@ -90,9 +91,9 @@
 
    (define (run-tests-log-to name)
      (with-output-to-file name)
-       (lambda()
+       (lambda ()
          (printf "Started passing the next string-ref~n~n")
-         (run-tests))))
+         (run-tests)))
 
    ;;(run-tests-log-to "testdata.txt")
 )
