@@ -1,1 +1,5 @@
-Just setting things up
+Attempt to improve regular expression matching perfomance
+by use of Regular Expression Derivatives and pre-compilation.
+
+Looking to add more tests and delve into more optimizations.
+
