@@ -30,8 +30,12 @@
      (printf "end test~n~n"))
 
 
-   (define s1 (make-string 100000 #\a))
-   (define s2 (make-string 1000000 #\a))
+   (define (buildByTwos str pow)
+     (if (<= pow 0) str
+         (buildByTwos (string-append str str) (- pow 1))))
+
+   (define s1 (buildByTwos "a" 26))
+   (define s2 (buildByTwos "a" 32))
    (define email "schwers.r@gmail.com")
    (define str1 (string-append s1 email s1))
    (define str2 (string-append s2 email s2))
