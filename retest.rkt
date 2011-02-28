@@ -20,9 +20,9 @@
    ;; with contract : (listof char) -> boolean
 
    ;; : DFA-MATCH RE (listof char) regexp-string string string Nat -> Unit
-   (define (compare-speed dfa-match re input description size)
+   (define (compare-speed dfa-match re input description)
      (printf "Now testing: ~a ~n" description)
-     (printf "Input size approx: ~a ~n" size)
+     (printf "Input size approx: ~a ~n" (string-length input)
      (printf "Built in re matcher: ~n")
      (time (regexp-match? re input))
      (printf "DFA-Match: ~n")
@@ -59,12 +59,12 @@
 
    (define (t1)
      (compare-speed *email* "schwers.r@gmail.com" str1
-                   "*schwers.r@gmail.com*" 20000))
+                   "*schwers.r@gmail.com*"))
 
 
    (define (t2)
      (compare-speed *email*"schwers.r@gmail.com" str2
-                    "*schwers.r@gmail.com*" 2000000))
+                    "*schwers.r@gmail.com*"))
 
    ;; ^a*$
    (define-for-syntax a*-only-stx
@@ -80,7 +80,7 @@
 
    (define (t3)
      (compare-speed a*-only "^a*$" s2
-                    "only a* -- ^a*$" 2000000))
+                    "only a* -- ^a*$"))
 
    ;; (listof tests)
    (define all-tests (list t1 t2 t3))
