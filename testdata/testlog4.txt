@@ -1,0 +1,26 @@
+Started passing the next string-ref
+
+Now testing: *schwers.r@gmail.com* 
+Input size approx: 20000 
+Built in re matcher: 
+cpu time: 0 real time: 3 gc time: 0
+DFA-Match: 
+cpu time: 48 real time: 46 gc time: 0
+end test
+
+Now testing: *schwers.r@gmail.com* 
+Input size approx: 2000000 
+Built in re matcher: 
+cpu time: 20 real time: 19 gc time: 0
+DFA-Match: 
+cpu time: 428 real time: 426 gc time: 0
+end test
+
+Now testing: only a* -- ^a*$ 
+Input size approx: 2000000 
+Built in re matcher: 
+cpu time: 24 real time: 24 gc time: 4
+DFA-Match: 
+cpu time: 216 real time: 214 gc time: 0
+end test
+
