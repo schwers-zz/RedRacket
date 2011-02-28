@@ -85,11 +85,10 @@
      (map (lambda (x) (x)) all-tests))
 
    (define (run-tests-log-to name)
-     (with-output-to-file (string-append "testdata/"name)
+     (with-output-to-file name)
        (lambda()
          (printf "Started passing the next string-ref~n~n")
          (run-tests))))
 
-  ;; (run-tests-log-to "testlog4.txt")
-
-   )
+   ;;(run-tests-log-to "testdata.txt")
+)
