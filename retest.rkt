@@ -74,17 +74,21 @@
 
    (define-syntax (bench-a*-only stx)
      (syntax-case stx ()
-       [(_) *email*-stx]))
+       [(_) a*-only-stx]))
 
    (define a*-only (bench-a*-only))
 
+   (define s2 (buildByTwos "a" 28))
 
    (define (t3)
      (compare-speed a*-only "^a*$" s2
                     "only a* -- ^a*$"))
 
    ;; (listof tests)
-   (define all-tests (list t1 t2 t3))
+   (define all-tests (list
+                      t1
+                      t2
+                      t3))
 
    (define (run-tests)
      (map (lambda (x) (x)) all-tests))
