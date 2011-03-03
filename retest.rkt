@@ -78,8 +78,6 @@
 
    (define a*-only (bench-a*-only))
 
-   (define s2 (buildByTwos "a" 28))
-
    (define (t3)
      (compare-speed a*-only "^a*$" s2
                     "only a* -- ^a*$"))
