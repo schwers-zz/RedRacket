@@ -121,7 +121,7 @@
       (with-syntax ([dest going] [l low] [h hi])
         (with-syntax ([this-range
                        (if (= hi low)
-                           #'(if (unsafe-fx= n num) (dest a b) #f)
+                           #'(if (unsafe-fx= n l) (dest a b) #f)
                            #'(if (unsafe-fxand (unsafe-fx<= n h)
                                                (unsafe-fx>= n l))
                                  (dest a b)
@@ -185,8 +185,8 @@
                     #'[src
                        (lambda (i n)
                          (if (unsafe-fx= i len) empty-case
-                             (let ([a (unsafe-fx+ i 1)]
-                                   [b (char->integer (unsafe-string-ref string i))])
+                             (let* ([a (unsafe-fx+ i 1)]
+                                    [b (char->integer (unsafe-string-ref string a))])
                                bst)))]))])
 
           (with-syntax ([(nodes ...) (map trans-expand transitions)]
