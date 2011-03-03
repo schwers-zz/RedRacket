@@ -118,57 +118,35 @@
            [pair-parts (list-rmaps->partition rmaps low)]
            [less (car pair-parts)]
            [more (cdr pair-parts)])
-      ;; Syntax-Transformation with slight optimizations
-      (cond [(and (null? less) (null? more))
-             (if (unsafe-fx= hi low)
-                 ;; If there's nothing left and the range is a single number
-                 (with-syntax ([dest going] [num low])
-                   #'(if (unsafe-fx= n num) (dest a b) #f))
-                 ;; If there's a range
-                 (with-syntax ([dest going] [low low] [hi hi])
-                     #'(if (unsafe-fxand (unsafe-fx<= n hi)
-                                         (unsafe-fx>= n low))
-                           (dest a b)
-                           #f)))]
-          [(null? less)
-           (if (unsafe-fx= hi low)
-               (with-syntax ([upper-range (rmaps->binary-search more)]
-                             [dest going] [num low])
-                 #'(if (unsafe-fx> n num)
-                       upper-range
-                       (if (unsafe-fx= n num) (dest a b) #f)))
-               (with-syntax ([upper-range (rmaps->binary-search more)]
-                             [dest going] [low low] [hi hi])
-                 #'(if (unsafe-fx> n hi)
-                       upper-range
-                       (if (unsafe-fxand (unsafe-fx<= n hi)
-                                         (unsafe-fx>= n low))
-                           (dest a b)
-                           #f))))]
-           [(null? more)
-            (if (unsafe-fx= hi low)
-                (with-syntax ([lower-range (rmaps->binary-search less)]
-                              [dest going] [num low])
-                  #'(if (unsafe-fx< n num)
-                        lower-range
-                        (if (unsafe-fx= n num) (dest a b) #f)))
-                (with-syntax ([lower-range (rmaps->binary-search less)]
-                              [dest going] [low low] [hi hi])
-                  #'(if (unsafe-fx< n low)
-                        lower-range
-                        (if (unsafe-fxand (unsafe-fx<= n hi)
-                                          (unsafe-fx>= n low))
-                            (dest a b)
-                            #f))))]
-           [#t
-            (with-syntax ([lower-range (rmaps->binary-search less)]
-                          [upper-range (rmaps->binary-search more)]
-                          [dest going] [low low] [hi hi])
-              #'(if (unsafe-fx> n hi)
-                    upper-range
-                    (if (unsafe-fx< n low)
-                        lower-range
-                        (dest a b))))])))
+      (with-syntax ([dest going] [l low] [h hi])
+        (with-syntax ([this-range
+                       (if (= hi low)
+                           #'(if (unsafe-fx= n num) (dest a b) #f)
+                           #'(if (unsafe-fxand (unsafe-fx<= n h)
+                                               (unsafe-fx>= n l))
+                                 (dest a b)
+                                 #f))])
+          ;; Syntax-Transformation with slight optimizations
+          (cond [(and (null? less) (null? more)) #'this-range]
+                [(null? less)
+                 (with-syntax ([upper-range (rmaps->binary-search more)])
+                   #'(if (unsafe-fx> n h)
+                         upper-range
+                         this-range))]
+                [(null? more)
+                 (with-syntax ([lower-range (rmaps->binary-search less)])
+                   #'(if (unsafe-fx< n l)
+                         lower-range
+                         this-range))]
+                [#t
+                 (with-syntax ([lower-range (rmaps->binary-search less)]
+                               [upper-range (rmaps->binary-search more)])
+                   #'(if (unsafe-fx> n h)
+                         upper-range
+                         (if (unsafe-fx< n l)
+                             lower-range
+                             ;; Lack of this-range (low < x < hi => x in range)
+                             (dest a b))))])))))
 
   ;;  : dfa -> syntax-object
   (define (dfa-expand in)
