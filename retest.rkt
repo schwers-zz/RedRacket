@@ -25,16 +25,16 @@
    ;; runs the test according to the controls, and prints results
    (define (test-match matcher input test which)
      (if (run-test? which)
-       (begin
-         (set! all-tests
-               (append all-tests
-                       (list (lambda ()
-                               (printf "TESTING: ~s~n" test)
-                               (printf "Input size: ~a~n" (string-length input))
-                               (printf "Matcher : ~a~n" which)
-                               (time (matcher input))
-                               (printf "~n")))))
-               (printf "ADDED ~a:~a to tests~n" which test))
+         (begin
+           (set! all-tests
+                 (append all-tests
+                         (list (lambda ()
+                                 (printf "TESTING: ~s~n" test)
+                                 (printf "Input size: ~a~n" (string-length input))
+                                 (printf "Matcher : ~a~n" which)
+                                 (time (matcher input))
+                                 (printf "~n")))))
+           (printf "ADDED ~a:~a to tests~n" which test))
          (printf "~a:~a was not added~n" which test)))
 
    (define (test-dfa dfa input test) (test-match dfa input test 'dfa))
@@ -46,9 +46,9 @@
 
    ;; : string number -> string
    ;; helper function to build large strings
-   (define (buildByTwos str pow)
+   (define (build-by-twos str pow)
      (if (<= pow 0) str
-         (buildByTwos (string-append str str) (- pow 1))))
+         (build-by-twos (string-append str str) (- pow 1))))
 
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
    ;; .*schwers.r@gmail.com.*
@@ -66,8 +66,8 @@
 
    (define *email* (bench-*email*))
 
-   (define s1 (buildByTwos "a" 20))
-   (define s2 (buildByTwos "a" 26))
+   (define s1 (build-by-twos "a" 20))
+   (define s2 (build-by-twos "a" 26))
    (define email "schwers.r@gmail.com")
    (define str1 (string-append s1 email s1))
    (define str2 (string-append s2 email s2))
@@ -93,22 +93,80 @@
 
    (define a*-only (bench-a*-only))
 
-   (define a*-passing "a* -- should be #t")
-   (test-dfa a*-only s1 a*-passing)
-   (test-dfa a*-only s2 a*-passing)
+   (define a*-pass "a* -- should be match")
+   (test-dfa a*-only s1 a*-pass)
+   (test-dfa a*-only s2 a*-pass)
 
    (define a*-regex #rx"^a*$")
-   (test-reg a*-regex s1 a*-passing)
-   (test-reg a*-regex s2 a*-passing)
+   (test-reg a*-regex s1 a*-pass)
+   (test-reg a*-regex s2 a*-pass)
 
+   (define a*-fail "a* -- should fail")
+   (define a*-fail-fast (string-append a*-fail ".. fast?"))
+   (define a*-fail-slow (string-append a*-fail ".. slow?"))
+
+   (test-dfa a*-only (string-append "Z" s1) a*-fail-fast)
+   (test-dfa a*-only (string-append s1 "Z") a*-fail-slow)
+   (test-dfa a*-only (string-append "Z" s2) a*-fail-fast)
+   (test-dfa a*-only (string-append s2 "Z") a*-fail-slow)
+
+   (test-reg a*-regex (string-append "Z" s1) a*-fail-fast)
+   (test-reg a*-regex (string-append s1 "Z") a*-fail-slow)
+   (test-reg a*-regex (string-append "Z" s2) a*-fail-fast)
+   (test-reg a*-regex (string-append s2 "Z") a*-fail-slow)
+
+
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+   ;; validating email
+   (define-for-syntax valid-email-stx
+     (dfa-expand
+      (build-test-dfa
+       '((concatenation (repetition 1 +inf.0 (union (char-range #\a #\z)
+                                                     (char-range #\0 #\9)
+                                                     #\. #\_ #\% #\+ #\-))
+                         #\@
+                         (repetition 1 +inf.0 (union (char-range #\a #\z)
+                                                     (char-range #\0 #\9)
+                                                     #\. #\-))
+                         (repetition 2 4 (char-range #\a #\z)))))))
+
+   (define-syntax (bench-valid-email stx)
+     (syntax-case stx ()
+       [(_) valid-email-stx]))
+
+   (define valid-email (bench-valid-email))
+
+   (define em1 "john.test.email@random.test.domain.uk")
+   (define em2 "this.is.a.test.right.")
+   (define em3 (build-by-twos em2 15))
+   (define em4 (string-append em3 "yup@" em3))
+
+   (define email-desc "validate email test, should match")
+   (test-dfa valid-email em1 email-desc)
+   (test-dfa valid-email (string-append em4 ".com") email-desc)
+   (test-dfa valid-email (string-append em4 ".test") email-desc)
+   (test-dfa valid-email (string-append em4 ".de") email-desc)
+
+
+   (define email-regex
+     #rx"[a-z0-9\\.]_\\%\\+\\-]+@[a-z0-9\\.\\-]+\\.([a-z][a-z]|[a-z][a-z][a-z]|[a-z][a-z][a-z][a-z])")
+
+   (test-reg email-regex em1 email-desc)
+   (test-reg email-regex (string-append em4 ".com") email-desc)
+   (test-reg email-regex (string-append em4 ".test") email-desc)
+   (test-reg email-regex (string-append em4 ".uk") email-desc)
+
+   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+   ;; Running tests, with optional file output
    (define (run-tests)
-     (map (lambda (x) (x)) all-tests))
+     (map (lambda (x) (x)) all-tests)
+     (printf "ALL tests completed"))
 
-   (define (run-tests-log-to name)
-     (with-output-to-file name)
+   (define (log-to name)
+     (with-output-to-file name
        (lambda ()
          (printf "Testdata from retest.rkt~n~n")
          (run-tests)))
 
-   ;;(run-tests-log-to "testdata.txt")
+   ;;(log-to "testdata.txt")
 )

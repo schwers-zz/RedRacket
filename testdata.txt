@@ -1,0 +1,123 @@
+Testdata from retest.rkt
+
+TESTING: ".*schwers.r@gmail.com.*"
+Input size: 2097171
+Matcher : dfa
+cpu time: 60 real time: 62 gc time: 0
+
+TESTING: ".*schwers.r@gmail.com.*"
+Input size: 134217747
+Matcher : dfa
+cpu time: 3948 real time: 3945 gc time: 0
+
+TESTING: ".*schwers.r@gmail.com.*"
+Input size: 2097171
+Matcher : regexp
+cpu time: 20 real time: 19 gc time: 0
+
+TESTING: ".*schwers.r@gmail.com.*"
+Input size: 134217747
+Matcher : regexp
+cpu time: 1296 real time: 1298 gc time: 8
+
+TESTING: "a* -- should be match"
+Input size: 1048576
+Matcher : dfa
+cpu time: 28 real time: 26 gc time: 0
+
+TESTING: "a* -- should be match"
+Input size: 67108864
+Matcher : dfa
+cpu time: 1672 real time: 1671 gc time: 0
+
+TESTING: "a* -- should be match"
+Input size: 1048576
+Matcher : regexp
+cpu time: 20 real time: 21 gc time: 4
+
+TESTING: "a* -- should be match"
+Input size: 67108864
+Matcher : regexp
+cpu time: 1272 real time: 1277 gc time: 0
+
+TESTING: "a* -- should fail.. fast?"
+Input size: 1048577
+Matcher : dfa
+cpu time: 0 real time: 0 gc time: 0
+
+TESTING: "a* -- should fail.. slow?"
+Input size: 1048577
+Matcher : dfa
+cpu time: 28 real time: 26 gc time: 0
+
+TESTING: "a* -- should fail.. fast?"
+Input size: 67108865
+Matcher : dfa
+cpu time: 0 real time: 0 gc time: 0
+
+TESTING: "a* -- should fail.. slow?"
+Input size: 67108865
+Matcher : dfa
+cpu time: 1676 real time: 1671 gc time: 0
+
+TESTING: "a* -- should fail.. fast?"
+Input size: 1048577
+Matcher : regexp
+cpu time: 8 real time: 10 gc time: 0
+
+TESTING: "a* -- should fail.. slow?"
+Input size: 1048577
+Matcher : regexp
+cpu time: 56 real time: 55 gc time: 0
+
+TESTING: "a* -- should fail.. fast?"
+Input size: 67108865
+Matcher : regexp
+cpu time: 481 real time: 485 gc time: 4
+
+TESTING: "a* -- should fail.. slow?"
+Input size: 67108865
+Matcher : regexp
+cpu time: 3540 real time: 3539 gc time: 0
+
+TESTING: "validate email test, should match"
+Input size: 37
+Matcher : dfa
+cpu time: 0 real time: 0 gc time: 0
+
+TESTING: "validate email test, should match"
+Input size: 1376264
+Matcher : dfa
+cpu time: 48 real time: 48 gc time: 0
+
+TESTING: "validate email test, should match"
+Input size: 1376265
+Matcher : dfa
+cpu time: 48 real time: 47 gc time: 0
+
+TESTING: "validate email test, should match"
+Input size: 1376263
+Matcher : dfa
+cpu time: 48 real time: 49 gc time: 0
+
+TESTING: "validate email test, should match"
+Input size: 37
+Matcher : regexp
+cpu time: 0 real time: 0 gc time: 0
+
+TESTING: "validate email test, should match"
+Input size: 1376264
+Matcher : regexp
+cpu time: 120 real time: 120 gc time: 0
+
+TESTING: "validate email test, should match"
+Input size: 1376265
+Matcher : regexp
+cpu time: 116 real time: 118 gc time: 0
+
+TESTING: "validate email test, should match"
+Input size: 1376263
+Matcher : regexp
+cpu time: 120 real time: 118 gc time: 0
+
+ALL tests completed
