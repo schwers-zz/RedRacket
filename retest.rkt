@@ -45,10 +45,10 @@
    (define-for-syntax *email*-stx
      (dfa-expand
       (build-test-dfa
-       '((concatenation (repetition 0 +inf.0 (char-range "0" "z"))
+       '((concatenation (repetition 0 +inf.0 (char-complement))
                         #\s #\c #\h #\w #\e #\r #\s #\. #\r
                         #\@ #\g #\m #\a #\i #\l #\. #\c #\o #\m
-                        (repetition 0 +inf.0 (char-range "0" "z")))))))
+                        (repetition 0 +inf.0 (char-complement)))))))
 
 
    (define-syntax (bench-*email* stx)
@@ -59,12 +59,12 @@
    (define *email* (bench-*email*))
 
    (define (t1)
-     (compare-speed *email* "schwers.r@gmail.com" str1
+     (compare-speed *email* #rx"^.*schwers.r@gmail.com.*$" str1
                    "*schwers.r@gmail.com*"))
 
 
    (define (t2)
-     (compare-speed *email* "schwers.r@gmail.com" str2
+     (compare-speed *email* #rx"^.*schwers.r@gmail.com.*" str2
                     "*schwers.r@gmail.com*"))
 
    ;; ^a*$
@@ -83,12 +83,11 @@
                     "only a* -- ^a*$"))
 
    ;; (listof tests)
-   (define all-tests (list
-                      t1
-                      t2
-                      t3))
+   (define all-tests (list t1 t3))
 
    (define (run-tests)
+
+
      (map (lambda (x) (x)) all-tests))
 
    (define (run-tests-log-to name)
