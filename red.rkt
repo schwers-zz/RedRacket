@@ -108,8 +108,44 @@
                   [(> start part) (loop (cdr rmps) acc1 (cons (car rmps) acc2))]
                   [#t (loop (cdr rmps) acc1 acc2)])))))
 
-  ;; : (Listof (Pair Range Dest)) -> Syntax-Object
-  (define (rmaps->binary-search rmaps)
+
+  ;; Dest Dest -> Boolean
+  (define (same-id? a b)
+    (bound-identifier=? a b))
+
+  ;; (Listof (Pair Range Dest) Dest -> Boolean : returns true if all out going edges
+  ;; come back to this state
+  (define (staying-here? rmaps id)
+    (andmap (lambda (pair) (same-id? (cdr pair) id)) rmaps))
+
+  ;; (Listof (Pair Range Dest) Dest -> Boolean : returns true if the state
+  ;; represnets .*X, where x is some symbol
+  (define (loop-until-x? rmaps id)
+    (and (= 3 (length rmaps))
+         (let ([a (car rmaps)] [b (cadr rmaps)] [c (caddr rmaps)])
+           (let ([a1 (caar a)] [a2 (cdar a)]
+                 [b1 (caar b)] [b2 (cdar b)]
+                 [c1 (caar c)] [c2 (cdar c)])
+             (and (= b1 b2)
+                  (= 0 a1)
+                  (= 1114111 c2)
+                  (= (+ a2 1) b1 (- c1 1))
+                  (same-id? (cdr a) id)
+                  (same-id? (cdr c) id))))))
+
+  ;; (Listof (Pair Range Dest) Dest -> Syntax-Object : Simplified syntax-object
+  ;; for the a state which passes loop-until-x?
+  (define (build-.*-loop rmaps id)
+    (let ([outmap (cadr rmaps)])
+      (with-syntax ([dest (cdr outmap)]
+                    [num  (caar outmap)]
+                    [this id])
+         #'(if (unsafe-fx= a num)
+               (dest a b)
+               (this a b)))))
+
+  ;; (Listof (Pair Range Dest)) Boolean Dest -> Syntax-Object
+  (define (build-bst rmaps)
     (let* ([part-ref (unsafe-fxquotient (length rmaps) 2)]
            [part (list-ref rmaps part-ref)]
            [low (caar part)]
@@ -129,24 +165,35 @@
           ;; Syntax-Transformation with slight optimizations
           (cond [(and (null? less) (null? more)) #'this-range]
                 [(null? less)
-                 (with-syntax ([upper-range (rmaps->binary-search more)])
+                 (with-syntax ([upper-range (build-bst more)])
                    #'(if (unsafe-fx> n h)
                          upper-range
                          this-range))]
                 [(null? more)
-                 (with-syntax ([lower-range (rmaps->binary-search less)])
+                 (with-syntax ([lower-range (build-bst less)])
                    #'(if (unsafe-fx< n l)
                          lower-range
                          this-range))]
                 [#t
-                 (with-syntax ([lower-range (rmaps->binary-search less)]
-                               [upper-range (rmaps->binary-search more)])
+                 (with-syntax ([lower-range (build-bst less)]
+                               [upper-range (build-bst more)])
                    #'(if (unsafe-fx> n h)
                          upper-range
                          (if (unsafe-fx< n l)
                              lower-range
                              ;; Lack of this-range (low < x < hi => x in range)
                              (dest a b))))])))))
+
+
+  ;; : (Listof (Pair Range Dest)) Boolean Dest-> Syntax-Object
+  (define (rmaps->bst rmaps final? id)
+    (if (null? rmaps) 
+        final?
+        (if (and final? (staying-here? rmaps id))
+            #t
+            (if (loop-until-x? rmaps id)
+                (build-.*-loop rmaps id)
+                (build-bst rmaps)))))
 
   ;;  : dfa -> syntax-object
   (define (dfa-expand in)
@@ -161,7 +208,7 @@
                [finals (dfa-final-states/actions in)]
                ;; : int -> bool ; true if state labeled by x is a final state
                [final? (lambda (x)
-                         (ormap (lambda (y) (eq? x (car y))) finals))]
+                         (ormap (lambda (y) (equal? x (car y))) finals))]
 
                [transitions (clean-trans (dfa-transitions in) num)]
                ;; : (Pair <integer-set> Natural) -> (Listof RangeMapping)
@@ -171,7 +218,7 @@
                         [dest (id-of (cdr pair))])
                     (to-ranges outgoing-chars dest)))]
                ;; : (Listof (Pair <integer-set> Natural)) -> (Listof RangeMapping)
-               [sets->range-mappings
+               [sets->rmaps
                 (lambda (pairs)
                   (foldl merge-range-dests null (map build-range-map pairs)))]
                ;; : (List Natural (Listof (Pair <integer-set> int)) -> Syntax-object
@@ -179,14 +226,16 @@
                 (lambda (tlist)
                   (with-syntax ([src (id-of (car tlist))]
                                 [empty-case (final? (car tlist))]
-                                [bst (rmaps->binary-search
-                                      (sets->range-mappings (cdr tlist)))]
+                                [bst (rmaps->bst (sets->rmaps (cdr tlist))
+                                                 (final? (car tlist))
+                                                 (id-of (car tlist)))]
                                 [len strlen*] [string string*])
                     #'[src
                        (lambda (i n)
                          (if (unsafe-fx= i len) empty-case
-                             (let* ([a (unsafe-fx+ i 1)]
-                                    [b (char->integer (unsafe-string-ref string a))])
+                             (let ([a (unsafe-fx+ i 1)]
+                                   [b (char->integer (unsafe-string-ref string 
+                                                                        (unsafe-fx+ i 1)))])
                                bst)))]))])
 
           (with-syntax ([(nodes ...) (map trans-expand transitions)]
