@@ -89,26 +89,37 @@ function permutesInMiddle(str,pre,post,n){
     return res;
 }
 
-var re0 = /^[a-z]*schwers.r@gmail.com[a-z]*$/;
+var re0 = /.*schwers.r@gmail.com.*$/;
 var re1 = /^a*$/;
-var re2 = /^[a-z]*palindromeemordnilap[a-z]*$/;
-var re3 = /^www\.[a-z]+\.com/;
+var re2 = /^www\.[a-z]+\.[a-z]{2,4}$/;
+var re3 = /^[a-z0-9\_\%\+\-\.]+@[a-z0-9\.\_]+\.[a-z]{2,4}$/;
 
-
-var data0 = permutesThenInsert("asnvoiwefg", "schwers.r@gmail.com", 10);
+var smallas = buildByTwos("a", 20);
 var as = buildByTwos("a", 26);
+var email = "schwers.r@gmail.com";
+var data0 = [smallas + email + smallas, smallas + email + smallas, smallas + email + smallas];
+var data01 = [as + email + as, as + email + as, as + email + as];
 var data1 = [as,as,as,as,as,as,as,as,as,as];
 var data2 = insertToAll(data1, "qed");
 var data3 = permutesThenInsert("asoqwxzc", "palindromeemordnilap", 10);
-var webfiller = buildByTwos("lambdafxxfxoiasdf", 3);
+var webfiller = buildByTwos("lambdafxxfxoiasdf", 10);
 var data4 = permutesInMiddle(webfiller, "www.", ".com", 10);
+var email1 = "john.test.email@ranomd.test.domain.uk";
+var emailfill = buildByTwos("this.is.a.test.right.", 15);
+var email2 = emailfill + "yay@blah.com";
+var email3 = emailfill + "yup@test.domain.filler.uk";
+var email4 = emailfill + "hi@blah.blah.blah.test";
+var emails = [email1,email2,email3,email3,email4];
+
 
 function runTests(){
-    test(re0, data0, "Email in the middle of random string");
+    test(re0, data0, " Email in the middle of random string");
+    test(re0, data01, " Email in the middle of random string");
     test(re1, data1, "A's only, should match");
     test(re1, data2, "A's only, should fail");
-    test(re2, data3, "Filler with a palindrome in the middle");
-    test(re3, data4, "Random website");
+    test(re3, emails, "Basic email validation");
+    test(re2, data4, "Random website");
+
 }
 
 
