@@ -50,7 +50,7 @@
     (if (<= pow 0) str
         (build-by-twos (string-append str str) (- pow 1))))
 
-   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; .*schwers.r@gmail.com.*
   (define-for-syntax *email*-stx
     (dfa-expand
@@ -139,13 +139,13 @@
    (define em1 "john.test.email@random.test.domain.uk")
    (define em2 "this.is.a.test.right.")
    (define em3 (build-by-twos em2 15))
-   (define em4 (string-append em3 "yup@" em3))
+   (define em4 (string-append em3 "yup@." em3))
 
    (define email-desc "validate email test, should match")
    (test-dfa valid-email em1 email-desc)
-   (test-dfa valid-email (string-append em4 ".com") email-desc)
-   (test-dfa valid-email (string-append em4 ".test") email-desc)
-   (test-dfa valid-email (string-append em4 ".de") email-desc)
+   (test-dfa valid-email (string-append em4 "com") email-desc)
+   (test-dfa valid-email (string-append em4 "test") email-desc)
+   (test-dfa valid-email (string-append em4 "de") email-desc)
 
 
    (define email-regex
@@ -193,5 +193,5 @@
          (printf "Performance test data~n~n")
          (run-tests))))
 
-   (log-to "data2.txt")
+   (log-to "data5.txt")
 )

@@ -109,6 +109,9 @@
                   [#t (loop (cdr rmps) acc1 acc2)])))))
 
 
+  (define CHAR_MIN 0)
+  (define CHAR_MAX 1114111)
+
   ;; Dest Dest -> Boolean
   (define (same-id? a b)
     (bound-identifier=? a b))
@@ -116,7 +119,7 @@
   ;; (Listof (Pair Range Dest) Dest -> Boolean : returns true if all out going edges
   ;; come back to this state
   (define (staying-here? rmaps id)
-    (andmap (lambda (pair) (same-id? (cdr pair) id)) rmaps))
+     (andmap (lambda (pair) (same-id? (cdr pair) id)) rmaps))
 
   ;; (Listof (Pair Range Dest) Dest -> Boolean : returns true if the state
   ;; represnets .*X, where x is some symbol
@@ -127,8 +130,8 @@
                  [b1 (caar b)] [b2 (cdar b)]
                  [c1 (caar c)] [c2 (cdar c)])
              (and (= b1 b2)
-                  (= 0 a1)
-                  (= 1114111 c2)
+                  (= CHAR_MIN a1)
+                  (= CHAR_MAX c2)
                   (= (+ a2 1) b1 (- c1 1))
                   (same-id? (cdr a) id)
                   (same-id? (cdr c) id))))))
@@ -139,10 +142,54 @@
     (let ([outmap (cadr rmaps)])
       (with-syntax ([dest (cdr outmap)]
                     [num  (caar outmap)]
-                    [this id])
-         #'(if (unsafe-fx= a num)
-               (dest a b)
-               (this a b)))))
+                    [this id]
+                    [next #'(unsafe-fx+ i 1)])
+         #'(if (unsafe-fx= n num)
+               (dest next)
+               (this next)))))
+
+  ;; (Listof (Pair Range Dest)-> Boolean
+  ;; returns true if rmaps of the form ((0 Xi) (Xi+1 Xi+1) (Xi+2 ...) (Xj MAX))
+  (define (series? rmaps)
+    (define (series* rmaps x id)
+      (define (first-two-same?)
+        (and (= (+ 1 x) (caaar rmaps) (cdaar rmaps) (- (caaadr rmaps) 1))
+             (same-id? id (cdadr rmaps))))
+      (define (two-in-a-row?)
+        (= (+ 1 x) (caaar rmaps) (cdaar rmaps)
+           (- (caaadr rmaps) 1) (- (cdaadr rmaps) 1)))
+      (if (not (null? (cdr rmaps)))
+          (if (first-two-same?)
+              (if (null? (cddr rmaps))
+                  (= (cdaadr rmaps) CHAR_MAX)
+                  (series* (cddr rmaps) (cdaadr rmaps) id))
+              (if (two-in-a-row?)
+                  (series* (cdr rmaps) (caaar rmaps) id)
+                  #f))
+          #f))
+    (if (not (null? rmaps))
+        (let ([s (caaar rmaps)] [x (cdaar rmaps)]  [id (cdar rmaps)])
+          (and (>= (length rmaps) 3)
+               (not (= s x))
+               (= s CHAR_MIN)
+               (series* (cdr rmaps) x id)))
+        #f))
+
+  ;; (Listof (Pair Range Dest) -> Syntax-Object
+  ;; returns the syntax object for a state wich passes the predicate series?
+  (define (build-series rmaps)
+    (define (build-branches rmaps acc)
+      (define (two-in-a-row?) (= (cdaadr rmaps) (caaadr rmaps)))
+      (let ([next (with-syntax ([val (caaar rmaps)] [dest (cdar rmaps)]
+                                [base acc])
+                   #'(if (unsafe-fx= i val) (dest (unsafe-fx+ i 1)) base))])
+        (if (null? (cddr rmaps))
+            next
+            (if (two-in-a-row?)
+                (build-branches (cdr rmaps) next)
+                (build-branches (cddr rmaps) next)))))
+    (build-branches (cdr rmaps)
+                    (with-syntax ([dest (cdar rmaps)]) #'(dest (unsafe-fx+ i 1)))))
 
   ;; (Listof (Pair Range Dest)) Boolean Dest -> Syntax-Object
   (define (build-bst rmaps)
@@ -154,13 +201,14 @@
            [pair-parts (list-rmaps->partition rmaps low)]
            [less (car pair-parts)]
            [more (cdr pair-parts)])
-      (with-syntax ([dest going] [l low] [h hi])
+      (with-syntax ([dest going] [l low] [h hi]
+                    [next #'(unsafe-fx+ i 1)])
         (with-syntax ([this-range
                        (if (= hi low)
-                           #'(if (unsafe-fx= n l) (dest a b) #f)
+                           #'(if (unsafe-fx= n l) (dest next))
                            #'(if (unsafe-fxand (unsafe-fx<= n h)
                                                (unsafe-fx>= n l))
-                                 (dest a b)
+                                 (dest next)
                                  #f))])
           ;; Syntax-Transformation with slight optimizations
           (cond [(and (null? less) (null? more)) #'this-range]
@@ -182,18 +230,19 @@
                          (if (unsafe-fx< n l)
                              lower-range
                              ;; Lack of this-range (low < x < hi => x in range)
-                             (dest a b))))])))))
+                             (dest next))))])))))
 
 
   ;; : (Listof (Pair Range Dest)) Boolean Dest-> Syntax-Object
   (define (rmaps->bst rmaps final? id)
-    (if (null? rmaps) 
-        final?
-        (if (and final? (staying-here? rmaps id))
-            #t
-            (if (loop-until-x? rmaps id)
-                (build-.*-loop rmaps id)
-                (build-bst rmaps)))))
+    (if (null? rmaps) final?
+        (if final? #t ;; These optimizations will be useful for returning a match ...
+            (if (and final? (staying-here? rmaps id)) #t
+                (if (loop-until-x? rmaps id)
+                    (build-.*-loop rmaps id)
+                    (if (series? rmaps)
+                        (build-series rmaps)
+                        (build-bst rmaps)))))))
 
   ;;  : dfa -> syntax-object
   (define (dfa-expand in)
@@ -224,26 +273,24 @@
                ;; : (List Natural (Listof (Pair <integer-set> int)) -> Syntax-object
                [trans-expand
                 (lambda (tlist)
-                  (with-syntax ([src (id-of (car tlist))]
-                                [empty-case (final? (car tlist))]
-                                [bst (rmaps->bst (sets->rmaps (cdr tlist))
-                                                 (final? (car tlist))
-                                                 (id-of (car tlist)))]
-                                [len strlen*] [string string*])
-                    #'[src
-                       (lambda (i n)
-                         (if (unsafe-fx= i len) empty-case
-                             (let ([a (unsafe-fx+ i 1)]
-                                   [b (char->integer (unsafe-string-ref string 
-                                                                        (unsafe-fx+ i 1)))])
-                               bst)))]))])
+                  (let ([accepts? (final? (car tlist))])
+                    (with-syntax ([src (id-of (car tlist))])
+                       (if accepts? #'[src (lambda (i) #t)]
+                           (with-syntax ([empty-case (final? (car tlist))]
+                                         [bst (rmaps->bst (sets->rmaps (cdr tlist)) accepts? (id-of (car tlist)))]
+                                         [len strlen*] [string string*])
+                             #'[src
+                                (lambda (i)
+                                  (if (unsafe-fx= i len) empty-case
+                                      (let ([n (char->integer (unsafe-string-ref string i))])
+                                        bst)))])))))])
 
           (with-syntax ([(nodes ...) (map trans-expand transitions)]
                         [start (id-of init)]
                         [n strlen*] [string string*])
              #'(lambda (string)
-                 (letrec ([n (unsafe-string-length string)]
-                          nodes ...)
-                   (start 0 (char->integer
-                             (unsafe-string-ref string 0)))))))))
+                 (let ([n (unsafe-string-length string)])
+                   (if (unsafe-fx= n 0) #f
+                       (letrec  (nodes ...)
+                         (start 0)))))))))
 )
