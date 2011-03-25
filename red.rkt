@@ -191,7 +191,7 @@
     (build-branches (cdr rmaps)
                     (with-syntax ([dest (cdar rmaps)]) #'(dest (unsafe-fx+ i 1)))))
 
-  ;; (Listof (Pair Range Dest)) Boolean Dest -> Syntax-Object
+  ;; (Listof (Pair Range Dest) -> Syntax-Object
   (define (build-bst rmaps)
     (let* ([part-ref (unsafe-fxquotient (length rmaps) 2)]
            [part (list-ref rmaps part-ref)]
@@ -205,11 +205,10 @@
                     [next #'(unsafe-fx+ i 1)])
         (with-syntax ([this-range
                        (if (= hi low)
-                           #'(if (unsafe-fx= n l) (dest next))
-                           #'(if (unsafe-fxand (unsafe-fx<= n h)
+                           #'(and (unsafe-fx= n l) (dest next))
+                           #'(and (unsafe-fxand (unsafe-fx<= n h)
                                                (unsafe-fx>= n l))
-                                 (dest next)
-                                 #f))])
+                                 (dest next)))])
           ;; Syntax-Transformation with slight optimizations
           (cond [(and (null? less) (null? more)) #'this-range]
                 [(null? less)
@@ -229,7 +228,6 @@
                          upper-range
                          (if (unsafe-fx< n l)
                              lower-range
-                             ;; Lack of this-range (low < x < hi => x in range)
                              (dest next))))])))))
 
 
