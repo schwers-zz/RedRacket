@@ -43,7 +43,7 @@
 
   (define (print-seperated nums title type)
     (define (print-seperated* nums)
-      (let ((num (number->string (car nums))))
+      (let ((num (number->string (exact->inexact (car nums)))))
         (if (null? (cdr nums))
           (printf (string-append (doublequote num) "~n"))
           (begin (printf (seperate num))
@@ -187,10 +187,11 @@
    (define-for-syntax *web-stx*
      (dfa-expand
       (build-test-dfa
-       '(#\w #\w #\w #\.
-         (concatenation  (repetition 1 +inf.0 (char-range #\a #\z))
-                         #\.
-                         (repetition 2 4 (char-range #\a #\z)))))))
+       '((concatenation
+          #\w #\w #\w #\.
+          (repetition 1 +inf.0 (char-range #\a #\z))
+          #\.
+          (repetition 2 4 (char-range #\a #\z)))))))
 
    (define-syntax (bench-web stx)
      (syntax-case stx ()
@@ -199,7 +200,7 @@
    (define web (bench-web))
 
    (define (webfiller n) (string-append "www." (build-by-twos "lambdafxxfxoiasdf" n) ".com"))
-   (define (web-regex str) (regexp-match? #rx"^www\\.[a-z]+\\.([a-z][a-z]|[a-z][a-z]|[a-z][a-z][a-z][a-z])$" str))
+   (define (web-regex str) (regexp-match? #rx"^www\\.[a-z]+\\.([a-z][a-z]|[a-z][a-z]|[a-z][a-z][a-z][a-z])" str))
 
    (test web web-regex webfiller "website url -- should pass")
 
@@ -214,5 +215,5 @@
          (lambda ()
            (run-tests))))
 
-  (log-to "charted.csv")
+;  (log-to "charted-3.csv")
 )

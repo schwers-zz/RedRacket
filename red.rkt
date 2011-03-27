@@ -24,7 +24,7 @@
   (define (build-test-dfa rs)
     (let ((c (make-cache)))
       (build-dfa (map (lambda (x) (cons (->re x c) 'action))
-                      rs)
+nn                      rs)
                  c)))
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -182,7 +182,7 @@
       (define (two-in-a-row?) (= (cdaadr rmaps) (caaadr rmaps)))
       (let ([next (with-syntax ([val (caaar rmaps)] [dest (cdar rmaps)]
                                 [base acc])
-                   #'(if (unsafe-fx= i val) (dest (unsafe-fx+ i 1)) base))])
+                   #'(if (unsafe-fx= n val) (dest (unsafe-fx+ i 1)) base))])
         (if (null? (cddr rmaps))
             next
             (if (two-in-a-row?)
