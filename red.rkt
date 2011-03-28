@@ -24,7 +24,7 @@
   (define (build-test-dfa rs)
     (let ((c (make-cache)))
       (build-dfa (map (lambda (x) (cons (->re x c) 'action))
-nn                      rs)
+                      rs)
                  c)))
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
