@@ -86,7 +86,7 @@
    (define em2 "this.is.a.test.right.")
    (define (email-str n) (let ((s (build-by-twos em2 n))) (string-append s "com")))
    (define (email-regex str)
-     (regexp-match? #rx"[a-z0-9\\.]_\\%\\+\\-]+@[a-z0-9\\.\\-]+\\.([a-z][a-z]|[a-z][a-z][a-z]|[a-z][a-z][a-z][a-z])"
+     (regexp-match? #rx"[a-z0-9\\.\\_\\%\\+\\-]+@[a-z0-9\\.\\-]+\\.([a-z][a-z]|[a-z][a-z][a-z]|[a-z][a-z][a-z][a-z])"
                     str))
 
    (define email-desc "validate email test, should match")
@@ -115,5 +115,7 @@
 
    (test web web-regex webfiller "website url -- should pass" #t)
 
-   (log-to "charted-3.csv")
+
+
+   ;;(log-to "charted-3.csv")
 )
