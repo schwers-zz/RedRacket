@@ -1,20 +1,30 @@
+
 // Testing javascript regexp times
 
+var numtests = 20;
 
 // Run some tests and give output
-function test(re, strs, text) {
-    print("Running test for" + text);
-    var time = 0;
-    var num = strs.length;
-    for (var i = 0; i < num; i++) {
-        var t1 = dateNow();
-        re.test(strs[i]);
-        var t2 = dateNow();
-        var delta = t2 - t1;
-        time = time + delta;
-        print("\t" + i + ": " + delta + "\n")
+function test(re, stringbuilder, text, result, max, min) {
+    max = max || 25;
+    min = min || 10;
+    print("Running tests for" + text);
+    for (var i = min; i <= max; i++) {
+        var string = stringbuilder(i);
+        var timeacc = 0;
+        var expected = true;
+        for (var j = 0; j < numtests; j++) {
+            var t1 = dateNow();
+            expected = (result == re.test(string)) && expected;
+            var t2 = dateNow();
+            var delta = t2 - t1;
+            timeacc += delta;
+        }
+        var s = (expected) ? "passed" : "failed";
+        print("\t Iteration: " + i + " Size of Input: " + string.length + " Tests: " + s);
+        print("\t Average: " + timeacc / numtests + "\n");
+        string = null;
+        timeacc = null;
     }
-    print("\tAverage: " + (time / num) + "\n")
 }
 
 
@@ -61,6 +71,12 @@ function insertRandom(str,ins){
     return str.substring(0,r) + ins + str.substring(r+1,str.length);
 }
 
+function insertMiddle(str,ins){
+    var len = str.length;
+    var mid = Math.round(len / 2);
+    return str.substring(0,mid) + ins + str.substring(mid, len);
+}
+
 function permutesThenInsert(str, ins, n){
     var res = buildPermutations(str,n);
     for (var i = 0; i < res.length; i++){
@@ -71,14 +87,20 @@ function permutesThenInsert(str, ins, n){
 
 function insertToAll(strs,ins){
     for (var i = 0; i < strs.length; i++){
-        strs[i] = insertRandom(strs[i], ins);
+        strs[i] = insertMiddle(strs[i], ins);
     }
     return strs;
-
 }
 
 function beforeAndAfter(str,pre,post){
     return pre + str + post;
+}
+
+function windAll(strs,pre,post){
+    for (var i = 0; i < strs.length; i++){
+        strs[i] = beforeAndAfter(strs[i],pre,post);
+    }
+    return strs;
 }
 
 function permutesInMiddle(str,pre,post,n){
@@ -90,36 +112,44 @@ function permutesInMiddle(str,pre,post,n){
 }
 
 var re0 = /.*schwers.r@gmail.com.*$/;
-var re1 = /^a*$/;
-var re2 = /^www\.[a-z]+\.[a-z]{2,4}$/;
-var re3 = /^[a-z0-9\_\%\+\-\.]+@[a-z0-9\.\_]+\.[a-z]{2,4}$/;
+var re1 = /^a*/;
+var re2 = /\(a+\)/;
+var re3 = /^www\.[a-z]+\.[a-z]{2,4}/;
+var re4 = /[a-z0-9\_\%\+\-\.]+@[a-z0-9\.\_]+\.[a-z]{2,4}/;
 
-var smallas = buildByTwos("a", 20);
-var as = buildByTwos("a", 26);
-var email = "schwers.r@gmail.com";
-var smemail = smallas + email + smallas;
-var data0 = [smemail, smemail, smemail, smemail, smemail, smemail];
-var aemaila = as + emailo + as;
-var data01 = [aemaila, aemaila, aemaila, aemaila, aemaila];
-var data1 = [as,as,as,as,as,as,as,as,as,as];
-var zas = "Z" + as;
-var data2 = [zas,zas,zas,zas];
-var asz = as + "Z";
-var data3 = [asz, asz, asz, asz, asz];
-var webfiller = "www." + buildByTwos("lambdafxxfxoiasdf", 10) ".com";
-var data4 = [webfiller, webfiller, webfiller, webfiller, webfiller];
-var email = buildByTwos("this.is.a.test.right.", 15) + "@yup.";
-var data5 = [email + "com", email + "test", email + "uk"];
+function as(n){
+    return  buildByTwos("a", n);
+}
 
+function aemailsa(n){
+    var s = as(n);
+    return s + "schwers.r@gmail.com" + s;
+}
+
+function parens(n){
+    var s = as(n);
+    return "(" + s + ")";
+}
+
+function urls(n){
+    var s = buildByTwos("lambdafxxfxoisadf", n);
+    return "www." + s + ".com";
+}
+
+
+function emails(n){
+    var s = buildByTwos("this.is.a.test.right", n);
+    return s + "@yup.com";
+}
 
 function runTests(){
-    test(re0, data0, " Email in the middle of a string of a");
-    test(re0, data01, " Email in the middle of a string of a");
-    test(re1, data1, " A's only, should match");
-    test(re1, data2, " A's only, should fail fast");
-    test(re1, data3, " A's only, should fail slow");
-    test(re3, emails, " Basic email validation");
-    test(re2, data4, " Random website");
+    /* make sure the regexs are compiled */
+    re0.compile; re1.compile; re2.compile; re3.compile; re4.compile;
+    test(re0, aemailsa, " a*emaila*", true);
+    test(re1, as, " a* only", true);
+    test(re2, parens, " (a+)", true);
+    test(re3, urls, " url validation", true);
+    test(re4, emails, " email validation", true, 22); /* max=23 */
 }
 
 
