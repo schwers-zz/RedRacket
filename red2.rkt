@@ -26,6 +26,7 @@
   (define char-min 0)
   (define char-max 1114111)
   (define series-max 12)
+  (define (dispatched x) (integer->char x))
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; From Deriv-Racket
@@ -63,7 +64,7 @@
                       [len length] [str string])
                      #'[src (lambda (i)
                               (if (unsafe-fx= i len) base-case
-                                  (let ([n (char->integer (unsafe-string-ref str i))])
+                                  (let ([n (unsafe-string-ref str i)])
                                     dispatch)))])))
 
   ;; (: trans-helper (Temprorary Temporary ->
@@ -161,7 +162,7 @@
     (let ([outmap (cadr rmaps)])
       (unless (singleton? outmap) (error 'build-.*-loop "expected a singletoin"))
       (with-syntax ([dest (cdr rmaps)]
-                    [num (singleton-val outmap)]
+                    [num (dispatched (singleton-val outmap))]
                     [this id]
                     [next #'(unsafe-fx+ i 1)])
         #'(if (unsafe-fx= n num)
@@ -196,7 +197,7 @@
   (define (build-series rmaps)
     (define (build-branches rmaps acc)
       (define (two-in-a-row?) (singleton? (caadr rmaps)))
-      (let ([next (with-syntax ([val (range-min (caar rmaps))]
+      (let ([next (with-syntax ([val (dispatched (range-min (caar rmaps)))]
                                 [dest (cdar rmaps)] [base acc])
                     #'(if (unsafe-fx= n val) (dest (unsafe-fx+ i 1)) base))])
         (if (null? (cddr rmaps)) next
@@ -226,7 +227,7 @@
            [going (cdr part)]
            [pair-parts (list-rmaps->partitions rmaps low)]
            [less (car pair-parts)] [more (cdr pair-parts)])
-      (with-syntax ([dest going] [l low] [h hi]
+      (with-syntax ([dest going] [l (dispatched low)] [h (dispatched hi)]
                     [next #'(unsafe-fx+ i 1)])
         (with-syntax ([this-range
                        (if (singleton? (car part))
@@ -240,7 +241,7 @@
                     #'(if (unsafe-fx> n h) upper-range this-range))]
                  [(null? more)
                   (with-syntax ([lower-range (build-bst less)])
-                    #'(if (unsafe-fx< n l lower-range this-range)))]
+                    #'(if (unsafe-fx< n l) lower-range this-range))]
                  [else
                   (with-syntax ([upper-range (build-bst more)]
                                 [lower-range (build-bst less)])
@@ -281,9 +282,9 @@
                     [start (id-of init)])
         #'(lambda (string)
             (let ([n (unsafe-string-length string)])
-              (if (unsafe-fx= n 0) #f)
-              (letrec (nodes ...)
-                (start 0)))))))
+              (if (unsafe-fx= n 0) #f
+                  (letrec (nodes ...)
+                    (start 0))))))))
 
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
