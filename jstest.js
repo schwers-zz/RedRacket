@@ -5,27 +5,65 @@ var numtests = 20;
 
 // Run some tests and give output
 function test(re, stringbuilder, text, result, max, min) {
-    max = max || 25;
+    max = max || 23;
     min = min || 10;
-    print("Running tests for" + text);
+    var results = new Array();
+    print("\n\n");
     for (var i = min; i <= max; i++) {
         var string = stringbuilder(i);
-        var timeacc = 0;
+        var times = new Array();
         var expected = true;
         for (var j = 0; j < numtests; j++) {
-            var t1 = dateNow();
-            expected = (result == re.test(string)) && expected;
-            var t2 = dateNow();
+            var t1 = (new Date()).getTime();
+            expected &= (result == re.test(string));
+            var t2 = (new Date()).getTime();
             var delta = t2 - t1;
-            timeacc += delta;
+            times.push(t2 - t1);
         }
-        var s = (expected) ? "passed" : "failed";
-        print("\t Iteration: " + i + " Size of Input: " + string.length + " Tests: " + s);
-        print("\t Average: " + timeacc / numtests + "\n");
-        string = null;
-        timeacc = null;
+        var temp = [string.length];
+        mean_variance(times,temp);
+        temp.push(expected);
+        results.push(temp);
     }
+    print_results(results, text);
 }
+
+function mean_variance(numbers, place){
+    var length = numbers.length;
+    var xs = 0; var x2s = 0; 
+    for (var i = 0; i < length; i++) {
+        var x = numbers[i];
+        xs += x; x2s = ( x * x );
+    }
+    var mean = (xs / length);
+    var vari = (x2s / length) - (mean * mean);
+    place.push(mean);
+    place.push(vari);
+}
+
+/* Expects an array of sub-array with four elements [sizemean,variance,passed?] */
+function print_results(result_array, test_description){
+    var line0 = doublequote("Size of Input:") + ";";
+    var line1 = doublequote("Mean time:") + ";";
+    var line2 = doublequote("Vari time:") + ";";
+    var line3 = doublequote("Test passed?:") + ";";
+    var length  = result_array.length;
+    for (var i = 0; i < length; i++){
+        var res = result_array[i];
+        line0 += (doublequote(res[0]) + ";");
+        line1 += (doublequote(res[1]) + ";");
+        line2 += (doublequote(res[2]) + ";");
+        line3 += (doublequote(passfail(res[3])) + ";");
+    }
+    print(doublequote("Test" + test_description) + "\n" +
+          line0 + "\n" +
+          line1 + "\n" +
+          line2 + "\n" +
+          line3);
+}
+
+function doublequote(val){ return "\"" + val + "\""; }
+function passfail(bool){ if (bool) { return "Passed"; } { return "Failed"; } }
 
 
 // build large strings by powers of two of the input string
@@ -149,7 +187,7 @@ function runTests(){
     test(re1, as, " a* only", true);
     test(re2, parens, " (a+)", true);
     test(re3, urls, " url validation", true);
-    test(re4, emails, " email validation", true, 22); /* max=23 */
+    test(re4, emails, " email validation", true);
 }
 
 
