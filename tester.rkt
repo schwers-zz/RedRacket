@@ -28,7 +28,7 @@
   (define (doall proc stuff) (map (lambda (x) (apply proc x)) stuff))
 
   ;; TEST FLAGS
-  (define num-test-runs 20)
+  (define num-test-runs 23)
   (define all-tests (box empty))
   (define test-lo 10)
   (define test-hi 20)
@@ -98,7 +98,7 @@
                       (for-each (lambda (run)
                                   (let-values ([(res cpu rel gbc) (time-apply matcher string)])
                                     (set-box! expects (and (unbox expects)
-                 (equal? (car res) should-be)))
+                                                           (equal? (car res) should-be)))
                                     (doall set-app! (list (list cpus cpu)
                                                           (list rels rel)
                                                           (list gbcs gbc)))))
