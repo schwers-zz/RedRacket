@@ -5,7 +5,7 @@ var numtests = 20;
 
 // Run some tests and give output
 function test(re, stringbuilder, text, result, max, min) {
-    max = max || 23;
+    max = max || 20;
     min = min || 10;
     var results = new Array();
     print("\n\n");
@@ -186,8 +186,8 @@ function runTests(){
     test(re0, aemailsa, " a*emaila*", true);
     test(re1, as, " a* only", true);
     test(re2, parens, " (a+)", true);
-    test(re3, urls, " url validation", true);
     test(re4, emails, " email validation", true);
+    test(re3, urls, " url validation", true);
 }
 
 
