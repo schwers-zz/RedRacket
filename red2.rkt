@@ -231,8 +231,8 @@
                     [next #'(unsafe-fx+ i 1)])
         (with-syntax ([this-range
                        (if (singleton? (car part))
-                           #'(unsafe-fxand (unsafe-fx= n l) (dest next))
-                           #'(unsafe-fxand (unsafe-fx <= n h)
+                           #'(and (unsafe-fx= n l) (dest next))
+                           #'(and (unsafe-fx <= n h)
                                            (unsafe-fx >= n l)
                                            (dest next)))])
            (cond [(and (null? less) (null? more)) #'this-range]
