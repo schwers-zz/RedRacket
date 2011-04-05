@@ -84,7 +84,7 @@
 
    (define em1 (lambda (n) "john.test.email@random.test.domain.uk"))
    (define em2 "this.is.a.test.right.")
-   (define (email-str n) (let ((s (build-by-twos em2 n))) (string-append s "com")))
+   (define (email-str n) (let ((s (build-by-twos em2 n))) (string-append s "@yup.com")))
    (define (email-regex str)
      (regexp-match? #rx"[a-z0-9\\.\\_\\%\\+\\-]+@[a-z0-9\\.\\-]+\\.([a-z][a-z]|[a-z][a-z][a-z]|[a-z][a-z][a-z][a-z])"
                     str))
@@ -117,5 +117,5 @@
 
 
 
-   ;;(log-to "charted-3.csv")
+   (log-to "red-10_4_5_11.csv")
 )
