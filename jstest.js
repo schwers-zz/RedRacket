@@ -2,31 +2,58 @@
 // Testing javascript regexp times
 
 var numtests = 20;
+var all_at_once = true;
 
 // Run some tests and give output
-function test(re, stringbuilder, text, result, max, min) {
+function test(re, stringbuilder, text, check_for, max, min) {
     max = max || 20;
     min = min || 10;
     var results = new Array();
+    var test_regexp = all_at_once ? all_at_once_inner : individual_inner;
     print("\n\n");
     for (var i = min; i <= max; i++) {
-        var string = stringbuilder(i);
-        var times = new Array();
-        var expected = true;
-        for (var j = 0; j < numtests; j++) {
-            var t1 = (new Date()).getTime();
-            expected &= (result == re.test(string));
-            var t2 = (new Date()).getTime();
-            var delta = t2 - t1;
-            times.push(t2 - t1);
-        }
-        var temp = [string.length];
-        mean_variance(times,temp);
-        temp.push(expected);
-        results.push(temp);
+        var current_result = test_regexp(re, stringbuilder, i, check_for);
+        results.push(current_result);
     }
     print_results(results, text);
 }
+
+/* regexp * (int -> string) * int * bool -> [int, int, int, bool] */
+function all_at_once_inner(re, stringbuilder, i, shouldbe){
+    var string = stringbuilder(i);
+    var result = shouldbe;
+    var times = new Array();
+    for (var k = 0; k < numtests; k++){
+            var t1 = (new Date()).getTime();
+            for (var j = 0; j < numtests; j++){
+                result &= (shouldbe == re.test(string));
+            }
+            var t2 = (new Date()).getTime();
+            times.push((t2 - t1) / numtests);
+    }
+    var temp = [string.length];
+    mean_variance(times, temp);
+    temp.push(result);
+    return temp;
+}
+
+/* regexp * (int -> string) * int * bool -> [int, int, int, bool] */
+function individual_inner(re, stringbuilder, i, shouldbe){
+    var string = stringbiulder(i);
+    var result = shouldbe;
+    var times = new Array();
+    for (var j = 0; j < numtests; j++) {
+        var t1 = (new Date()).getTime();
+        result &= (shouldbe == re.test(string));
+        var t2 = (new Date()).getTime();
+        times.push(t2 - t2);
+    }
+    var temp = [string.length];
+    mean_variance(times, temp);
+    temp.push(result);
+    return temp;
+}
+
 
 function mean_variance(numbers, place){
     var length = numbers.length;
