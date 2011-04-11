@@ -28,11 +28,12 @@
   (define (doall proc stuff) (map (lambda (x) (apply proc x)) stuff))
 
   ;; TEST FLAGS
-  (define num-test-runs 23)
+  (define num-test-runs 20)
   (define all-tests (box empty))
   (define test-lo 10)
   (define test-hi 20)
   (define test-inc 1)
+  (define all_at_once? #t)
 
   ;; Mutationy stuff
   (define (set-app! place value) (set-box! place (append (unbox place) (list value))))
@@ -79,6 +80,16 @@
                  (print-as-expected* (cdr lob)))))
     (if (null? lob) (printf "HUH?") (print-as-expected* lob)))
 
+  (define (->all_at_once test)
+    (lambda (string)
+      (for-each (lambda (run) (test string))
+                (build-list num-test-runs id))))
+
+  (define (make-test-matcher matcher)
+    (if all_at_once? (->all_at_once matcher)
+        matcher))
+
+  (define (normalize num) (if all_at_once? (/ num num-test-runs) num))
 
   ;; The actual test thats run
   ;; (: build-test : (String -> Bool) (Natrual-> String) String Naturalx3)
@@ -91,7 +102,8 @@
             [sizes (make-elements lo hi inc)]
             [expects (box true)]
             [cpus (box empty)] [rels (box empty)] [gbcs (box empty)]
-            [test-runs (build-list num-test-runs id)])
+            [test-runs (build-list num-test-runs id)]
+            [matcher (make-test-matcher matcher)])
         (for-each (lambda (size)
                     (let ([string (list (input size))])
                       (printf (seperate (number->string (string-length (car string)))))
@@ -99,9 +111,9 @@
                                   (let-values ([(res cpu rel gbc) (time-apply matcher string)])
                                     (set-box! expects (and (unbox expects)
                                                            (equal? (car res) should-be)))
-                                    (doall set-app! (list (list cpus cpu)
-                                                          (list rels rel)
-                                                          (list gbcs gbc)))))
+                                    (doall set-app! (list (list cpus (normalize cpu))
+                                                          (list rels (normalize rel))
+                                                          (list gbcs (normalize gbc))))))
                                 test-runs)
                       (doall add-stats! (list (list cpu-stats (unbox cpus))
                                               (list rel-stats (unbox rels))
