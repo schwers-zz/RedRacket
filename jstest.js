@@ -24,12 +24,12 @@ function all_at_once_inner(re, stringbuilder, i, shouldbe){
     var result = shouldbe;
     var times = new Array();
     for (var k = 0; k < numtests; k++){
-            var t1 = (new Date()).getTime();
-            for (var j = 0; j < numtests; j++){
-                result &= (shouldbe == re.test(string));
-            }
-            var t2 = (new Date()).getTime();
-            times.push((t2 - t1) / numtests);
+        var t1 = (new Date()).getTime();
+        for (var j = 0; j < numtests; j++){
+            result &= (shouldbe == re.test(string));
+        }
+        var t2 = (new Date()).getTime();
+        times.push((t2 - t1) / numtests);
     }
     var temp = [string.length];
     mean_variance(times, temp);
