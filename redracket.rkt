@@ -12,6 +12,8 @@
                        racket
                        racket/unsafe/ops))
 
+  (provide dfa-match?)
+
 
   ;; The macro for user level
   (define-syntax (dfa-match? stx)
@@ -26,7 +28,7 @@
   (equal? (dfa-match? "a+" "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa") #t)
   (equal? (dfa-match? "c(a|d)*r" "caadadadaddaadadadadadadddddaaaaar") #t)
   (equal? (dfa-match? "schwers.r@gmail.com" "aosihdfasdfschwers.r@gmail.comaskdfas") #t)
-  (equal? (dfa-match? "^schwers.r@gmail.com$" "schwers.r@gmail.com") #t)
+  (equal? (dfa-match? "^schwers\\.r@gmail\\.com$" "schwers.r@gmail.com") #t)
   (equal? (dfa-match? "(node\\.js|ruby)" "lashdfasdfnode\\.jsihasdfiasd") #t)
   (equal? (dfa-match? "(red|racket)(red|racket)" "redracket") #t)
 
