@@ -28,12 +28,13 @@
   (define (doall proc stuff) (map (lambda (x) (apply proc x)) stuff))
 
   ;; TEST FLAGS
-  (define num-test-runs 20)
+
   (define all-tests (box empty))
   (define test-lo 10)
   (define test-hi 20)
   (define test-inc 1)
-  (define all_at_once? #t)
+  (define num-tests 20)
+
 
   ;; Mutationy stuff
   (define (set-app! place value) (set-box! place (append (unbox place) (list value))))
@@ -80,20 +81,19 @@
                  (print-as-expected* (cdr lob)))))
     (if (null? lob) (printf "HUH?") (print-as-expected* lob)))
 
-  (define (->all_at_once test)
+  (define (->all_at_once test times)
     (lambda (string)
       (for-each (lambda (run) (test string))
-                (build-list num-test-runs id))))
+                (build-list times id))))
 
-  (define (make-test-matcher matcher)
-    (if all_at_once? (->all_at_once matcher)
-        matcher))
+  (define (make-test-matcher matcher all_at_once? times)
+    (if all_at_once? (->all_at_once matcher times) matcher))
 
-  (define (normalize num) (if all_at_once? (/ num num-test-runs) num))
+  (define (normalize num all_at_once? times) (if all_at_once? (/ num times) num))
 
   ;; The actual test thats run
   ;; (: build-test : (String -> Bool) (Natrual-> String) String Naturalx3)
-  (define (build-test matcher input type test lo hi inc should-be)
+  (define (build-test matcher input type test lo hi inc should-be repeated? times)
     (lambda ()
       (printf (string-append "~n" (doublequote test) "~n"))
       (printf (seperate "Size of Input"))
@@ -102,8 +102,8 @@
             [sizes (make-elements lo hi inc)]
             [expects (box true)]
             [cpus (box empty)] [rels (box empty)] [gbcs (box empty)]
-            [test-runs (build-list num-test-runs id)]
-            [matcher (make-test-matcher matcher)])
+            [test-runs (build-list num-tests id)]
+            [matcher (make-test-matcher matcher repeated? times)])
         (for-each (lambda (size)
                     (let ([string (list (input size))])
                       (printf (seperate (number->string (string-length (car string)))))
@@ -111,9 +111,9 @@
                                   (let-values ([(res cpu rel gbc) (time-apply matcher string)])
                                     (set-box! expects (and (unbox expects)
                                                            (equal? (car res) should-be)))
-                                    (doall set-app! (list (list cpus (normalize cpu))
-                                                          (list rels (normalize rel))
-                                                          (list gbcs (normalize gbc))))))
+                                    (doall set-app! (list (list cpus (normalize cpu repeated? times))
+                                                          (list rels (normalize rel repeated? times))
+                                                          (list gbcs (normalize gbc repeated? times))))))
                                 test-runs)
                       (doall add-stats! (list (list cpu-stats (unbox cpus))
                                               (list rel-stats (unbox rels))
@@ -128,9 +128,9 @@
 
 
   ;; (: test : (String -> Bool) (String -> Bool) (-> String) String)
-  (define (test dfa rgx input test expect)
-    (add-test! (build-test dfa input "DFA: " test test-lo test-hi test-inc expect))
-    (add-test! (build-test rgx input "RGX: " test test-lo test-hi test-inc expect)))
+  (define (test dfa rgx input test expect #:repeated? [repeated? #t] #:times [times 20])
+    (add-test! (build-test dfa input "DFA: " test test-lo test-hi test-inc expect repeated? times))
+    (add-test! (build-test rgx input "RGX: " test test-lo test-hi test-inc expect repeated? times)))
 
    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;; Running tests, with optional file output
