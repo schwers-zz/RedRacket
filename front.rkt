@@ -34,7 +34,7 @@
                                (let ([res (start '() (unsafe-fx+ index 1))])
                                  (start (cons (car res) acc) (cdr res))))]
                       ;; AGAIN TRICKERY : the position of where to start parsing
-                      ;; next is returned along with the result of the parenthesized 
+                      ;; next is returned along with the result of the parenthesized
                       ;; regexp.
                       [(#\)) (if (> (unbox depth) 0)
                                  (begin
@@ -47,6 +47,9 @@
                                (start (cons (make-repeat (car acc) (first res) (second res))
                                             (cdr acc))
                                       (unsafe-fx+ (third res) 1)))]
+                      ;; User a helper function to deal with ranges enclosed in [_somerange_]
+                      [(#\[) (let ([res (get-range '() (unsafe-fx+ index 1) #t)])
+                               (start (cons (car res) acc) (cdr res)))]
                       [(#\^) (start (cons (make-complement (car acc)) (cdr acc))
                                     (unsafe-fx+ index 1))]
                       [(#\\) (start (cons (get-escaped index) acc) (unsafe-fx+ index 2))]
@@ -79,6 +82,31 @@
                     (if (unsafe-fx= sym char) (cons acc (unsafe-fx+ index 1))
                         (get-num-until sym (unsafe-fx+ index 1) (add-num char acc))))
                   (error 'regexp-make "unfinished syntax! in ~s")))]
+
+           [get-range
+            (lambda (acc index first?)
+              ;; after the first time, we're no longer on the first character
+              ;; this is just to keep track of making the complmenet of ranges
+              (let ([get-range (lambda (acc index) (get-range acc index #f))])
+              (if (< index length)
+                  (let ([char (unsafe-string-ref string index)])
+                    (case char
+                      [(#\]) (cons (make-union acc) (unsafe-fx+ index 1))]
+                      [(#\^) (if first? (let ([res (get-range acc (unsafe-fx+ index 1))])
+                                          (cons (make-complement (car res)) (cdr res)))
+                                 (error 'regexp-make "can't use non escapse ^ in a range when its not the first char"))]
+                      [(#\\) (get-range (cons (get-escaped index) acc) (unsafe-fx+ index 1))]
+                      [(#\-) (let ([res (range* (car acc) (unsafe-fx+ index 1))])
+                               (get-range (cons (car res) (cdr acc)) (cdr res)))]
+                      [else  (get-range (cons char acc) (unsafe-fx+ index 1))]))
+                  (error 'regexp-make "unfinished range-expression in regexp"))))]
+
+           [range*
+            (lambda (c index)
+              (if (< index length)
+                  (let ([char (unsafe-string-ref string index)])
+                    (cons (make-range c char) (unsafe-fx+ index 1)))
+                  (error 'regexp-make "unfinished range expression in regexp")))]
 )
 
            ;; Helper functions to deal with the regexp starting with ^ and ending with $
@@ -97,7 +125,7 @@
                        (unsafe-string-ref string (unsafe-fx- length 1))
                        #\$)
                       (and (unsafe-fx>= length 3)
-                           (not (unsafe-fx= 
+                           (not (unsafe-fx=
                              (unsafe-string-ref string (unsafe-fx- length 2))
                              #\\))))
                  (begin (set! length (unsafe-fx- length 1))
@@ -105,7 +133,7 @@
                  void))
 
         ;; Start of the machine, if there's no ^ at the beginning of the machine
-        ;; then bake-in a .* at the front. If the end of the machine has a $, 
+        ;; then bake-in a .* at the front. If the end of the machine has a $,
         ;;_don't_ bake in a .* at the end.
         (if (unsafe-fx= length 0)
             (error 'regexp-make "empty regular expression!")
@@ -124,6 +152,7 @@
 
   ;; Helper functions that build the actual redstrings
   (define anything (list 'char-complement))
+  (define space (char->integer (unsafe-string-ref "  " 1)))
 
   (define (make-star char)
     (list 'repetition 0 +inf.0 char))
@@ -132,7 +161,8 @@
     (list 'repetition 1 +inf.0 char))
 
   (define (make-concat lst)
-    (if (= (length lst) 1) (car lst)
+    (if (= (length lst) 1)
+        (car lst)
         (cons 'concatenation (reverse lst))))
 
   (define (make-or l1 l2)
@@ -140,6 +170,21 @@
 
   (define (make-and l1 l2)
     (list 'intersection l1 l2))
+
+  (define (make-union lst)
+    (if (unsafe-fx= 1 (length lst))
+        (car lst)
+        (cons 'union lst)))
+
+  (define (make-range c1 c2)
+    (and (validate-range c1 c2)
+         (list 'char-range c1 c2)))
+
+  (define (validate-range c1 c2)
+    (or (and (unsafe-fx< c1 c2)
+             (not (unsafe-fx= c1 space))
+             (not (unsafe-fx= c1 space)))
+        (error 'regepx-make "invalid range syntax")))
 
   ;; To deal with close parens...
   (define (make-result res acc function)
