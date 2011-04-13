@@ -16,6 +16,7 @@
               (if (< index length)
                   (let ([char (unsafe-string-ref string index)])
                     (case char
+                      [(#\\) (start (cons (get-escaped index) acc) (unsafe-fx+ index 2))]
                       [(#\*) (start (cons (make-star (car acc)) (cdr acc))
                                     (unsafe-fx+ index 1))]
                       [(#\+) (start (cons (make-plus (car acc)) (cdr acc))
@@ -52,7 +53,6 @@
                                (start (cons (car res) acc) (cdr res)))]
                       [(#\^) (start (cons (make-complement (car acc)) (cdr acc))
                                     (unsafe-fx+ index 1))]
-                      [(#\\) (start (cons (get-escaped index) acc) (unsafe-fx+ index 2))]
                       [(#\.) (start (cons anything acc) (unsafe-fx+ index 1))]
                       [else (start (cons char acc) (unsafe-fx+ index 1))]))
                   (if (= (unbox depth) 0)
@@ -91,11 +91,11 @@
               (if (< index length)
                   (let ([char (unsafe-string-ref string index)])
                     (case char
+                      [(#\\) (get-range (cons (get-escaped index) acc) (unsafe-fx+ index 2))]
                       [(#\]) (cons (make-union acc) (unsafe-fx+ index 1))]
                       [(#\^) (if first? (let ([res (get-range acc (unsafe-fx+ index 1))])
                                           (cons (make-complement (car res)) (cdr res)))
                                  (error 'regexp-make "can't use non escapse ^ in a range when its not the first char"))]
-                      [(#\\) (get-range (cons (get-escaped index) acc) (unsafe-fx+ index 1))]
                       [(#\-) (let ([res (range* (car acc) (unsafe-fx+ index 1))])
                                (get-range (cons (car res) (cdr acc)) (cdr res)))]
                       [else  (get-range (cons char acc) (unsafe-fx+ index 1))]))
@@ -174,7 +174,7 @@
   (define (make-union lst)
     (if (unsafe-fx= 1 (length lst))
         (car lst)
-        (cons 'union lst)))
+        (cons 'union (reverse lst))))
 
   (define (make-range c1 c2)
     (and (validate-range c1 c2)
