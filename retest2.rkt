@@ -11,6 +11,9 @@
   (define (parengen n) (string-append "(" (as n) ")"))
   (define (email-str n) (string-append (build-by-twos "this.is.a.test.right" n) "@yup.com"))
   (define (weburl n) (string-append "www." (build-by-twos "lambdafxxfxoiasdf" n) ".com"))
+  (define (date-f1 n) "05/05/1981")
+  (define (date-f2 n) "12December2012")
+  (define date-runs 10000)
 
   (define (schenanigans builder)
     (lambda (n)
@@ -56,6 +59,17 @@
   (define (url-rgx? x) (regexp-match? #px"^www\\.[a-z]+\\.[a-z]{2,4}$" x))
   (test url-dfa? url-rgx? weburl valid-url #t)
   (test url-dfa? url-rgx? (schenanigans weburl) valid-url #f)
+
+  (define date-dd/mm/yyyy "Testing for a valid date dd/mm/yyyy")
+  (define (datef1-dfa? x) (dfa-match?       "^[0-9][0-9]/[0-9][0-9]/[0-9][0-9][0-9][0-9]$" x))
+  (define (datef1-rgx? x) (regexp-match? #rx"^[0-9][0-9]/[0-9][0-9]/[0-9][0-9][0-9][0-9]$" x))
+  (test datef1-dfa? datef1-rgx? date-f1 date-dd/mm/yyyy #t #:times date-runs)
+
+  (define date-ddmonthyyyy "Testing for a valid date ddmonthyyyy")
+  (define (datef2-dfa? x) (dfa-match?       "^[0-9][0-9][A-Za-z]{3,9}[0-9][0-9][0-9][0-9]$" x))
+  (define (datef2-rgx? x) (regexp-match? #rx"^[0-9][0-9][A-Za-z]{3,9}[0-9][0-9][0-9][0-9]$" x))
+  (test datef2-dfa? datef2-rgx? date-f2 date-ddmonthyyyy #t #:times date-runs)
+
 
   ;; ALSO : Numbers / result of (run-tests) seem odd...
 )
