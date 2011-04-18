@@ -1,209 +1,181 @@
-(module front racket
-  (require racket/unsafe/ops)
+#lang racket
+(require parser-tools/lex
+         (prefix-in : parser-tools/lex-sre)
+         parser-tools/yacc)
 
-  (provide (all-defined-out))
-
-
-  ;; The finite-state-machine to turn a list required for build-ing
-  ;; a dfa, lets call them a redstring
-  (define (->redstring string)
-    (let ([length (unsafe-string-length string)]
-          [depth (box 0)]) ;; Keep track of nested syntax like (regexp)
-      (letrec
-          ([start
-            ;; The main state, does most jof the work using convenience functions
-            (lambda (acc index)
-              (if (< index length)
-                  (let ([char (unsafe-string-ref string index)])
-                    (case char
-                      [(#\\) (start (cons (get-escaped index) acc) (unsafe-fx+ index 2))]
-                      [(#\*) (start (cons (make-star (car acc)) (cdr acc))
-                                    (unsafe-fx+ index 1))]
-                      [(#\+) (start (cons (make-plus (car acc)) (cdr acc))
-                                    (unsafe-fx+ index 1))]
-                      [(#\|) (let ([res (start '() (unsafe-fx+ index 1))])
-                               (make-result res acc make-or))]
-                      [(#\&) (let ([res (start '() (unsafe-fx+ index 1))])
-                               (make-result res acc make-and))]
-                      ;; When we encounter a parenthesized expression, increase
-                      ;; the depth, and then parse the regexp.
-                      ;; NOTE THE TRICKERY : when we find a close paren,
-                      ;; the result is to return a (Pair redstring Natural)
-                      ;; so the position of where to start parsing next is maintained
-                      [(#\() (begin
-                               (set-box! depth (unsafe-fx+ (unbox depth) 1))
-                               (let ([res (start '() (unsafe-fx+ index 1))])
-                                 (start (cons (car res) acc) (cdr res))))]
-                      ;; AGAIN TRICKERY : the position of where to start parsing
-                      ;; next is returned along with the result of the parenthesized
-                      ;; regexp.
-                      [(#\)) (if (> (unbox depth) 0)
-                                 (begin
-                                   (set-box! depth (unsafe-fx- (unbox depth) 1))
-                                   (cons (make-concat acc) (unsafe-fx+ index 1)))
-                                 (error 'regexp-make "too many close parens! in ~s" string))]
-                      ;; Use a helper function, which will validate the {Num,Num} Syntax
-                      ;; and build the appropriate repeition.
-                      [(#\{) (let ([res (get-repetition (unsafe-fx+ index 1))])
-                               (start (cons (make-repeat (car acc) (first res) (second res))
-                                            (cdr acc))
-                                      (unsafe-fx+ (third res) 1)))]
-                      ;; User a helper function to deal with ranges enclosed in [_somerange_]
-                      [(#\[) (let ([res (get-range '() (unsafe-fx+ index 1) #t)])
-                               (start (cons (car res) acc) (cdr res)))]
-                      [(#\^) (start (cons (make-complement (car acc)) (cdr acc))
-                                    (unsafe-fx+ index 1))]
-                      [(#\.) (start (cons anything acc) (unsafe-fx+ index 1))]
-                      [else (start (cons char acc) (unsafe-fx+ index 1))]))
-                  (if (= (unbox depth) 0)
-                      (make-concat acc)
-                      (error 'regexp-make "not enough closing parens! in ~s" string))))]
-
-           ;; Mostly convenience helper functions for dealing with
-           ;; operations resembling seperate states of the machine.
-           [get-escaped
-            (lambda (index)
-              (let ([i (unsafe-fx+ index 1)])
-                (if (< i length) (unsafe-string-ref string i)
-                    (error 'regexp-make "unfinisehd escape character in ~s" string))))]
-
-           [get-repetition
-            (lambda (index)
-              (let* ([r1 (get-num-until #\, index 0)]
-                     [r2 (get-num-until #\} (cdr r1) 0)])
-                (if (> (car r1) (car r2))
-                    (error 'make-regexp "invalid range for repetition")
-                    (list (car r1) (car r2) (cdr r2)))))]
-
-           [get-num-until
-            (lambda (sym index acc)
-              (if (< index length)
-                  (let ([char (unsafe-string-ref string index)])
-                    (if (unsafe-fx= sym char) (cons acc (unsafe-fx+ index 1))
-                        (get-num-until sym (unsafe-fx+ index 1) (add-num char acc))))
-                  (error 'regexp-make "unfinished syntax! in ~s")))]
-
-           [get-range
-            (lambda (acc index first?)
-              ;; after the first time, we're no longer on the first character
-              ;; this is just to keep track of making the complmenet of ranges
-              (let ([get-range (lambda (acc index) (get-range acc index #f))])
-              (if (< index length)
-                  (let ([char (unsafe-string-ref string index)])
-                    (case char
-                      [(#\\) (get-range (cons (get-escaped index) acc) (unsafe-fx+ index 2))]
-                      [(#\]) (cons (make-union acc) (unsafe-fx+ index 1))]
-                      [(#\^) (if first? (let ([res (get-range acc (unsafe-fx+ index 1))])
-                                          (cons (make-complement (car res)) (cdr res)))
-                                 (error 'regexp-make "can't use non escapse ^ in a range when its not the first char"))]
-                      [(#\-) (let ([res (range* (car acc) (unsafe-fx+ index 1))])
-                               (get-range (cons (car res) (cdr acc)) (cdr res)))]
-                      [else  (get-range (cons char acc) (unsafe-fx+ index 1))]))
-                  (error 'regexp-make "unfinished range-expression in regexp"))))]
-
-           [range*
-            (lambda (c index)
-              (if (< index length)
-                  (let ([char (unsafe-string-ref string index)])
-                    (cons (make-range c char) (unsafe-fx+ index 1)))
-                  (error 'regexp-make "unfinished range expression in regexp")))]
-)
-
-           ;; Helper functions to deal with the regexp starting with ^ and ending with $
-
-           ;; starts-^? -- might change the acc to (make-start anything) and the init pos to 1
-           (define (starts-^? initacc init)
-             (if (unsafe-fx= (unsafe-string-ref string 0) #\^)
-                 (begin (set-box! initacc '())
-                        (set-box! init 1))
-                 void))
-
-           ;; ends-$? -- might change the the wrapup function to not add a .* to the end
-           ;; also might decrease the checked length of the string to not include it
-           (define (ends-$? wrapup)
-             (if (and (unsafe-fx=
-                       (unsafe-string-ref string (unsafe-fx- length 1))
-                       #\$)
-                      (and (unsafe-fx>= length 3)
-                           (not (unsafe-fx=
-                             (unsafe-string-ref string (unsafe-fx- length 2))
-                             #\\))))
-                 (begin (set! length (unsafe-fx- length 1))
-                        (set-box! wrapup (lambda (x) (list x))))
-                 void))
-
-        ;; Start of the machine, if there's no ^ at the beginning of the machine
-        ;; then bake-in a .* at the front. If the end of the machine has a $,
-        ;;_don't_ bake in a .* at the end.
-        (if (unsafe-fx= length 0)
-            (error 'regexp-make "empty regular expression!")
-            (let ([hd (unsafe-string-ref string 0)]
-                  [tl (unsafe-string-ref string (unsafe-fx- length 1))]
-                  [initacc (box (list (make-star anything)))] [init (box 0)]
-                  [wrapup
-                   (box (lambda (x) (append (list x) (list (make-star anything)))))])
-
-              (starts-^? initacc init)
-              (ends-$? wrapup)
-              ((unbox wrapup) (start (unbox initacc) (unbox init))))))))
+(provide ->redstring)
 
 
+(define-tokens regtokens (LITERAL))
+(define-empty-tokens regsyms (LPAREN RPAREN LBRACK RBRACK LCURL RCURL ANY COMMA DASH PLUS STAR NOT OR HUH EOF))
+
+(define rex-literal (lexer [any-char (token-LITERAL lexeme)] [(eof) (token-EOF)]))
+
+(define rexer
+  (lexer
+   [(:: #\\ any-char) (token-LITERAL (cadr (string->list lexeme)))]
+   [#\( (token-LPAREN)]
+   [#\) (token-RPAREN)]
+   [#\[ (token-LBRACK)]
+   [#\] (token-RBRACK)]
+   [#\{ (token-LCURL)]
+   [#\} (token-RCURL)]
+   [#\. (token-ANY)]
+   [#\, (token-COMMA)]
+   [#\- (token-DASH)]
+   [#\+ (token-PLUS)]
+   [#\* (token-STAR)]
+   [#\^ (token-NOT)]
+   [#\| (token-OR)]
+   [#\? (token-HUH)]
+   [any-char (token-LITERAL (string->list lexeme))]
+   [(eof) (token-EOF)]))
+
+(define redparser
+  (parser
+   (start s)
+   (end EOF)
+   (tokens regtokens regsyms)
+   (error (lambda (tok-ok? tok-name tok-value)
+            (error 'redracket
+                   (if tok-ok?
+                       (format "Unexpected token ~s" tok-name)
+                       (format "Invalid token ~s" tok-name)))))
+   ;; taken from the grammer at docs.racket-lang.org/reference/regexp.html
+   (grammar    (s      [(regexp) (list $1)])
+
+    (regexp [(pces) (make-concat $1)]
+            [(regexp OR regexp) (make-union $1 $3)])
+
+    (pces   [(pce) (cons $1 null)]
+            [(pce pces) (cons $1 $2)])
+
+    (pce    [(repeat) $1]
+            [(atom) $1])
+
+    (repeat [(atom STAR) (make-star $1)]
+            [(atom PLUS) (make-plus $1)]
+            [(atom HUH)  (make-huh $1)]
+            [(atom rep)  ($2 $1)])
+
+    (atom   [(LPAREN regexp RPAREN) $2]
+            [(LBRACK NOT rng RBRACK) (make-comp $3)]
+            [(LBRACK rng RBRACK) $2]
+            [(ANY) ANYTHING]
+            [(LITERAL) (get-literal $1)])
+
+    (rep    [(LCURL num COMMA rstrep) (make-rep-fun $2 $4)]
+            [(LCURL COMMA rstrep) (make-rep-fun 0 $3)])
+
+    (rstrep [(num RCURL) $1]
+            [(RCURL) +inf.0])
+
+    (num    [(LITERAL) (cons (get-literal $1) null)]
+            [(LITERAL num) (cons (get-literal $1) $2)])
+
+    (rng    [(RBRACK) null]
+            [(DASH) #\-]
+            [(mrng) $1]
+            [(mrng DASH) (make-range $1 #\-)])
+
+    (mrng   [(RBRACK lrng) (make-range #\} $2)]
+            [(DASH lrng) (make-range #\- $2)]
+            [(liring) $1])
+
+    (liring [(LITERAL) (get-literal $1)]
+            [(LITERAL DASH LITERAL) (make-literal-range $1 $3)]
+            [(liring lrng) (make-union $1 $2)])
+
+    (lrng   [(NOT) #\^]
+            [(LITERAL DASH LITERAL) (make-literal-range $1 $3)]
+            [(NOT lrng) (make-comp $2)]
+            [(liring) $1]))))
 
 
-  ;; Helper functions that build the actual redstrings
-  (define anything (list 'char-complement))
-  (define space (char->integer (unsafe-string-ref "  " 1)))
+;; Smart constructors and constants for regexp constructs
+(define ANYTHING (list 'char-complement))
+(define SPACE (char->integer (string-ref "   " 1)))
+(define (get-literal x) (literal-norm x))
 
-  (define (make-star char)
-    (list 'repetition 0 +inf.0 char))
+(define (get-num x)
+  (cond [(number? x) x]
+        [(list? x) (build-num x)]
+        [else (error 'regexp-make "~s not a number in repetition" x)]))
 
-  (define (make-plus char)
-    (list 'repetition 1 +inf.0 char))
+(define (build-num x)
+  (define (build-num* x acc)
+    (if (null? x) acc
+        (let ([num? (- (char->integer (car x)) 48)])
+          (if (<= num? 9)
+              (build-num* (cdr x)
+                          (+ (* acc 10) num?))
+              (error 'regexp-make "~s not a number in repetition" x)))))
+  (build-num* x 0))
 
-  (define (make-concat lst)
-    (if (= (length lst) 1)
-        (car lst)
-        (cons 'concatenation (reverse lst))))
+(define (make-concat x)
+  (if (and (list? x) (= (length x) 1))
+      (car x)
+      (cons 'concatenation  x)))
 
-  (define (make-or l1 l2)
-    (list 'union l1 l2))
+(define (make-union x y)
+  (append '(union) (unionize x y)))
 
-  (define (make-and l1 l2)
-    (list 'intersection l1 l2))
+(define (unionize x y)
+ (map literal-norm
+      (append (list (remove-sym x 'union))
+              (remove-sym y 'union))))
 
-  (define (make-union lst)
-    (if (unsafe-fx= 1 (length lst))
-        (car lst)
-        (cons 'union (reverse lst))))
+(define (remove-sym thing sym)
+  (if (list? thing)
+      (if (and (>= (length thing) 2)
+               (eq? sym (car thing)))
+          (cdr thing)
+          thing)
+      (list thing)))
 
-  (define (make-range c1 c2)
-    (and (validate-range c1 c2)
-         (list 'char-range c1 c2)))
+(define (literal-norm x)
+  (if (and (list? x) (= 1 (length x)))
+      (car x)
+      x))
 
-  (define (validate-range c1 c2)
-    (or (and (unsafe-fx< c1 c2)
-             (not (unsafe-fx= c1 space))
-             (not (unsafe-fx= c1 space)))
-        (error 'regepx-make "invalid range syntax")))
+(define (make-literal-range x y)
+  (let ([x* (literal-norm x)]
+        [y* (literal-norm y)])
+    (make-range x* y*)))
 
-  ;; To deal with close parens...
-  (define (make-result res acc function)
-    (if (pair? res)
-        (cons (function (make-concat acc) (car res)) (cdr res))
-        (function (make-concat acc) res)))
+(define (make-range x y)
+  (and (validate-range x y)
+       (list 'char-range x y)))
 
-  (define (make-complement t)
-    (list 'char-complement t))
+(define (validate-range x y)
+  (let ((x (char->integer x))
+        (y (char->integer y)))
+    (or (and (< x y)
+             (not (= x SPACE))
+             (not (= y SPACE)))
+        (error 'regexp-make "invalid range syntax"))))
 
-  (define (make-repeat t lo hi)
-    (list 'repetition lo hi t))
+(define (make-comp x) (list 'complement x))
 
-  ;; Assumes numbers are parsed left->right in base 10...
-  (define (add-num char num)
-    (let ([num? (unsafe-fx- (char->integer char) 48)])
-      (if (<= num? 9) (unsafe-fx+ (unsafe-fx* 10 num) num?)
-          (error 'regexp-make "not a valid number in ~s" char))))
+(define (make-rep lo hi x)
+  (and (valid-rep lo hi)
+       (list 'repetition lo hi x)))
+
+(define (valid-rep lo hi)
+  (if (<= lo hi) #t
+      (error 'regexp-make "invalid number for repetition")))
+
+(define (make-rep-fun lo hi) (lambda (x) (make-rep (get-num lo) (get-num hi) x)))
+
+(define (make-star x) (make-rep 0 +inf.0 x))
+(define (make-plus x) (make-rep 1 +inf.0 x))
+(define (make-huh x)  (make-rep 0 1 +inf.0 x))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Outward interface
+(define (->redstring input)
+  (let ((ip (open-input-string input)))
+    (port-count-lines! ip)
+    (redparser (lambda () (rexer ip)))))
 
-)
