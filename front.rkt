@@ -3,7 +3,7 @@
          (prefix-in : parser-tools/lex-sre)
          parser-tools/yacc)
 
-(provide ->redstring)
+(provide ->redstring ->insredstring)
 
 
 (define-tokens regtokens (LITERAL))
@@ -183,7 +183,23 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Outward interface
 (define (->redstring input)
-  (let ((ip (open-input-string input)))
-    (port-count-lines! ip)
-    (redparser (lambda () (rexer ip)))))
+  (define (begins-with?)
+    (if (eq? (string-ref input 0) #\^)
+        (values #t 1)
+        (values #f 0)))
+  (define (ends-with?)
+    (let ([end (- (string-length input) 1)])
+      (if (eq? (string-ref input end) #\$)
+          (values #t (- end 1))
+          (values #f end))))
+  (let-values
+      ([(start*? start-pos) (begins-with?)]
+       [(end*?   end-pos)   (ends-with?)])
+    (let ([ip (open-input-string (substring input start-pos end-pos))])
+      (port-count-lines! ip)
+      (values start*? end*? (redparser (lambda () (rexer ip)))))))
+
+(define (->insredstring input)
+  (let-values ([(start*? end*? result) (->redstring input)])
+    (list start*? end*? result)))
 
