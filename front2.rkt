@@ -7,7 +7,7 @@
 
 
 (define-tokens regtokens (LITERAL))
-(define-empty-tokens regsyms (LPAREN RPAREN LBRACK RBRACK ANY COMMA DASH PLUS STAR NOT OR HUH EOF))
+(define-empty-tokens regsyms (LPAREN RPAREN LBRACK RBRACK LCURL RCURL ANY COMMA DASH PLUS STAR NOT OR HUH EOF))
 
 (define rex-literal (lexer [any-char (token-LITERAL lexeme)] [(eof) (token-EOF)]))
 
@@ -18,6 +18,8 @@
    [#\) (token-RPAREN)]
    [#\[ (token-LBRACK)]
    [#\] (token-RBRACK)]
+   [#\{ (token-LCURL)]
+   [#\} (token-RCURL)]
    [#\. (token-ANY)]
    [#\, (token-COMMA)]
    [#\- (token-DASH)]
@@ -40,8 +42,7 @@
                        (format "Unexpected token ~s" tok-name)
                        (format "Invalid token ~s" tok-name)))))
    ;; taken from the grammer at docs.racket-lang.org/reference/regexp.html
-   (grammar
-    (s      [(regexp) (list $1)])
+   (grammar    (s      [(regexp) (list $1)])
 
     (regexp [(pces) (make-concat $1)]
             [(regexp OR regexp) (make-union $1 $3)])
@@ -54,13 +55,23 @@
 
     (repeat [(atom STAR) (make-star $1)]
             [(atom PLUS) (make-plus $1)]
-            [(atom HUH)  (make-huh $1)])
+            [(atom HUH)  (make-huh $1)]
+            [(atom rep)  ($2 $1)])
 
     (atom   [(LPAREN regexp RPAREN) $2]
             [(LBRACK NOT rng RBRACK) (make-comp $3)]
             [(LBRACK rng RBRACK) $2]
             [(ANY) ANYTHING]
             [(LITERAL) (get-literal $1)])
+
+    (rep    [(LCURL num COMMA rstrep) (make-rep-fun $2 $4)]
+            [(LCURL COMMA rstrep) (make-rep-fun 0 $3)])
+
+    (rstrep [(num RCURL) $1]
+            [(RCURL) +inf.0])
+
+    (num    [(LITERAL) (cons (get-literal $1) null)]
+            [(LITERAL num) (cons (get-literal $1) $2)])
 
     (rng    [(RBRACK) null]
             [(DASH) #\-]
@@ -85,6 +96,21 @@
 (define ANYTHING (list 'char-complement))
 (define SPACE (char->integer (string-ref "   " 1)))
 (define (get-literal x) (literal-norm x))
+
+(define (get-num x)
+  (cond [(number? x) x]
+        [(list? x) (build-num x)]
+        [else (error 'regexp-make "~s not a number in repetition" x)]))
+
+(define (build-num x)
+  (define (build-num* x acc)
+    (if (null? x) acc
+        (let ([num? (- (char->integer (car x)) 48)])
+          (if (<= num? 9)
+              (build-num* (cdr x)
+                          (+ (* acc 10) num?))
+              (error 'regexp-make "~s not a number in repetition" x)))))
+  (build-num* x 0))
 
 (define (make-concat x)
   (if (and (list? x) (= (length x) 1))
@@ -131,13 +157,23 @@
 
 (define (make-comp x) (list 'complement x))
 
-(define (make-rep lo hi x) (list 'repetition lo hi x))
+(define (make-rep lo hi x)
+  (and (valid-rep lo hi)
+       (list 'repetition lo hi x)))
+
+(define (valid-rep lo hi)
+  (if (<= lo hi) #t
+      (error 'regexp-make "invalid number for repetition")))
+
+(define (make-rep-fun lo hi) (lambda (x) (make-rep (get-num lo) (get-num hi) x)))
+
 (define (make-star x) (make-rep 0 +inf.0 x))
 (define (make-plus x) (make-rep 1 +inf.0 x))
 (define (make-huh x)  (make-rep 0 1 +inf.0 x))
 
 
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Outward interface
 (define (->redstring input)
   (let ((ip (open-input-string input)))
     (port-count-lines! ip)
