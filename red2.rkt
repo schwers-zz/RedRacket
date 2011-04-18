@@ -22,7 +22,7 @@
 (define (make-temps n) (list->vector (generate-temporaries (build-list n id))))
 (define (one-temp) (vector-ref (make-temps 1) 0))
 
-(define fast-stop? #t)
+(define fast-stop? #f)
 (define char-min 0)
 (define char-max 1114111)
 (define series-max 12)
@@ -260,8 +260,9 @@
           [else (loop finals (cdr nums) (cons #f acc))])))
 
 ;; (: dfa-expand (dfa -> SYNTAX))
-(define (dfa-expand in)
+(define (dfa-expand in end*?)
   (unless (dfa? in) (error 'dfa-epxand "expected a dfa given: ~s" in))
+  (if end*? (set! fast-stop? #t) #t)
   (let* ([num (dfa-num-states in)]
          [init (dfa-start-state in)]
          [string* (one-temp)]

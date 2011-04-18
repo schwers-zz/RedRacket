@@ -243,7 +243,7 @@
                       (build-bst rmaps)))))))
 
 ;;  : dfa -> syntax-object
-(define (dfa-expand in)
+(define (dfa-expand in end*?)
   (if (not (dfa? in)) (error 'dfa-expand "improper input")
       (let* ([id (lambda (x) x)]
              [num (dfa-num-states in)]
