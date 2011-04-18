@@ -177,7 +177,7 @@
 
 (define (make-star x) (make-rep 0 +inf.0 x))
 (define (make-plus x) (make-rep 1 +inf.0 x))
-(define (make-huh x)  (make-rep 0 1 +inf.0 x))
+(define (make-huh x)  (make-rep 0 1 x))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
