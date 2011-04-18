@@ -44,7 +44,7 @@
     (s      [(regexp) (list $1)])
 
     (regexp [(pces) (make-concat $1)]
-            [(regexp OR regexp) (make-or $1 $3)])
+            [(regexp OR regexp) (make-union $1 $3)])
 
     (pces   [(pce) (cons $1 null)]
             [(pce pces) (cons $1 $2)])
@@ -73,7 +73,7 @@
 
     (liring [(LITERAL) (get-literal $1)]
             [(LITERAL DASH LITERAL) (make-literal-range $1 $3)]
-            [(liring lrng) (make-union (list $1 $2))])
+            [(liring lrng) (make-union $1 $2)])
 
     (lrng   [(NOT) #\^]
             [(LITERAL DASH LITERAL) (make-literal-range $1 $3)]
@@ -84,17 +84,28 @@
 ;; Smart constructors and constants for regexp constructs
 (define ANYTHING (list 'char-complement))
 (define SPACE (char->integer (string-ref "   " 1)))
-(define (get-literal x) (car x))
+(define (get-literal x) (literal-norm x))
 
 (define (make-concat x)
   (if (and (list? x) (= (length x) 1))
       (car x)
-      (cons 'concatentation x)))
+      (cons 'concatenation  x)))
 
-(define (make-union lst)
-  (if (= 1 (length lst))
-      (car lst)
-      (cons 'union (reverse lst))))
+(define (make-union x y)
+  (append '(union) (unionize x y)))
+
+(define (unionize x y)
+ (map literal-norm
+      (append (list (remove-sym x 'union))
+              (remove-sym y 'union))))
+
+(define (remove-sym thing sym)
+  (if (list? thing)
+      (if (and (>= (length thing) 2)
+               (eq? sym (car thing)))
+          (cdr thing)
+          thing)
+      (list thing)))
 
 (define (literal-norm x)
   (if (and (list? x) (= 1 (length x)))
@@ -117,8 +128,6 @@
              (not (= x SPACE))
              (not (= y SPACE)))
         (error 'regexp-make "invalid range syntax"))))
-
-(define (make-or x y) (make-union (list x y)))
 
 (define (make-comp x) (list 'complement x))
 
