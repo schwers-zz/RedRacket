@@ -123,13 +123,21 @@
 (define (unionize x y)
  (map literal-norm
       (append (list (remove-sym x 'union))
-              (remove-sym y 'union))))
+              (fix-union (remove-sym y 'union)))))
 
 (define (remove-sym thing sym)
   (if (list? thing)
       (if (and (>= (length thing) 2)
                (eq? sym (car thing)))
           (cdr thing)
+          thing)
+      (list thing)))
+
+(define (fix-union thing)
+  (if (list? thing)
+      (if (and (>= (length thing) 2)
+               (eq? 'concatenation (car thing)))
+          (list thing)
           thing)
       (list thing)))
 
