@@ -185,13 +185,13 @@
 (define (->redstring input)
   (define (begins-with?)
     (if (eq? (string-ref input 0) #\^)
-        (values #t 1)
-        (values #f 0)))
+        (values #f 1)
+        (values #t 0)))
   (define (ends-with?)
     (let ([end (- (string-length input) 1)])
       (if (eq? (string-ref input end) #\$)
-          (values #t (- end 1))
-          (values #f end))))
+          (values #f end)
+          (values #t (+ end 1)))))
   (let-values
       ([(start*? start-pos) (begins-with?)]
        [(end*?   end-pos)   (ends-with?)])
