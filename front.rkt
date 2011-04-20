@@ -3,7 +3,7 @@
          (prefix-in : parser-tools/lex-sre)
          parser-tools/yacc)
 
-(provide ->redstring ->insredstring)
+(provide ->redstring ->insredstring add-anything)
 
 
 (define-tokens regtokens (LITERAL))
@@ -41,8 +41,12 @@
                    (if tok-ok?
                        (format "Unexpected token ~s" tok-name)
                        (format "Invalid token ~s" tok-name)))))
+   (precs (left OR)
+          (right NOT LITERAL DASH))
+
    ;; taken from the grammer at docs.racket-lang.org/reference/regexp.html
-   (grammar    (s      [(regexp) (list $1)])
+   (grammar
+    (s      [(regexp) (list $1)])
 
     (regexp [(pces) (make-concat $1)]
             [(regexp OR regexp) (make-union $1 $3)])
@@ -91,7 +95,7 @@
             [(NOT lrng) (make-comp $2)]
             [(liring) $1]))))
 
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Smart constructors and constants for regexp constructs
 (define ANYTHING (list 'char-complement))
 (define SPACE (char->integer (string-ref "   " 1)))
@@ -178,6 +182,18 @@
 (define (make-star x) (make-rep 0 +inf.0 x))
 (define (make-plus x) (make-rep 1 +inf.0 x))
 (define (make-huh x)  (make-rep 0 1 x))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Utility Function for redracket.rkt
+
+(define (add-anything x)
+  (define dot-star (list 'concatenation (list 'repetition 0 +inf.0 '(char-complement))))
+  (and (list? x)
+      (and (list? (car x))
+           (let ([hd (caar x)])
+             (if (eq? hd 'concatenation)
+                 (list (append dot-star (cdar x)))
+                 (list (append dot-star (list (car x)))))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
